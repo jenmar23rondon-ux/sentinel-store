@@ -1,13 +1,13 @@
 @echo off
 setlocal
 
-title Sentinel AI OS
+title Aether
 
 cd /d "%~dp0"
 
 echo.
 echo ==========================================
-echo   Sentinel AI OS - Personal Second Brain
+echo   Aether - Personal Second Brain
 echo ==========================================
 echo.
 
@@ -44,7 +44,7 @@ if not exist "node_modules" (
 powershell -NoProfile -Command "$backend = Get-NetTCPConnection -LocalPort 4100 -ErrorAction SilentlyContinue; $frontend = Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue; if ($backend -and $frontend) { exit 20 } elseif ($backend -or $frontend) { exit 21 } else { exit 0 }"
 if %errorlevel%==20 (
   echo.
-  echo [INFO] Sentinel AI OS ya parece estar corriendo.
+  echo [INFO] Aether ya parece estar corriendo.
   echo [INFO] Abriendo http://localhost:5173
   start "" "http://localhost:5173"
   pause
@@ -61,7 +61,7 @@ if %errorlevel%==21 (
 )
 
 echo.
-echo [INFO] Iniciando Sentinel AI OS...
+echo [INFO] Iniciando Aether...
 echo [INFO] Frontend: http://localhost:5173
 echo [INFO] Backend:  http://localhost:4100
 echo.

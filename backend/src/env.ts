@@ -4,7 +4,7 @@ dotenv.config();
 
 export const env = {
   port: Number(process.env.PORT ?? 4100),
-  dataFile: process.env.DATA_FILE ?? "./data/sentinel-store.json",
+  dataFile: process.env.DATA_FILE ?? "./data/aether-store.json",
   databaseUrl: process.env.DATABASE_URL,
   openaiApiKey: process.env.OPENAI_API_KEY,
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",

@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["sentinel-icon.svg"],
+      includeAssets: ["aether-icon.svg"],
       manifest: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,json,webmanifest}"],
@@ -16,21 +16,21 @@ export default defineConfig({
             urlPattern: ({ request }) => request.destination === "document" || request.destination === "script" || request.destination === "style",
             handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "sentinel-static"
+              cacheName: "aether-static"
             }
           },
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
             handler: "NetworkFirst",
             options: {
-              cacheName: "sentinel-api",
+              cacheName: "aether-api",
               networkTimeoutSeconds: 4,
               expiration: {
                 maxEntries: 80,
                 maxAgeSeconds: 60 * 60 * 24
               },
               backgroundSync: {
-                name: "sentinel-api-sync",
+                name: "aether-api-sync",
                 options: {
                   maxRetentionTime: 24 * 60
                 }

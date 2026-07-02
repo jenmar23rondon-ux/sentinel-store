@@ -13,7 +13,6 @@ import {
   ChevronDown,
   Circle,
   Clipboard,
-  Crosshair,
   Download,
   Eye,
   EyeOff,
@@ -39,7 +38,6 @@ import {
   RefreshCw,
   Search,
   Send,
-  Shield,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
@@ -100,7 +98,7 @@ const translations = {
     moveDown: "Bajar",
     charts: "Gráficos",
     smartCharts: "Graficas inteligentes",
-    chartPrompt: "Pidele una grafica a Sentinel",
+    chartPrompt: "Pidele una grafica a Aether",
     createChart: "Crear grafica",
     chartExample: "Ej: crea una grafica de horas de estudio: lunes 2, martes 3, miercoles 1.5",
     noCharts: "Aun no hay graficas personalizadas. Pidele a la IA que cree una con tus datos.",
@@ -165,7 +163,7 @@ const translations = {
     assistantReady: "Tu asistente esta listo",
     assistantHint: "Prueba: \"Recuerda que mi meta es backend y ciberseguridad\" o \"Tarea: estudiar Docker manana\".",
     you: "Tu",
-    sentinel: "Sentinel",
+    assistantName: "Aether",
     chatPlaceholder: "Escribe una instruccion, idea o pendiente...",
     send: "Enviar",
     importantData: "Dato importante",
@@ -226,7 +224,7 @@ const translations = {
     moveDown: "Move down",
     charts: "Charts",
     smartCharts: "Smart charts",
-    chartPrompt: "Ask Sentinel for a chart",
+    chartPrompt: "Ask Aether for a chart",
     createChart: "Create chart",
     chartExample: "Example: create a chart of study hours: Monday 2, Tuesday 3, Wednesday 1.5",
     noCharts: "No custom charts yet. Ask the AI to create one with your data.",
@@ -291,7 +289,7 @@ const translations = {
     assistantReady: "Your assistant is ready",
     assistantHint: "Try: \"Remember that my goal is backend and cybersecurity\" or \"Task: study Docker tomorrow\".",
     you: "You",
-    sentinel: "Sentinel",
+    assistantName: "Aether",
     chatPlaceholder: "Write an instruction, idea or pending item...",
     send: "Send",
     importantData: "Important data",
@@ -352,7 +350,7 @@ const translations = {
     moveDown: "Descer",
     charts: "Graficos",
     smartCharts: "Graficos inteligentes",
-    chartPrompt: "Peca um grafico ao Sentinel",
+    chartPrompt: "Peca um grafico ao Aether",
     createChart: "Criar grafico",
     chartExample: "Ex: cria um grafico de horas de estudo: segunda 2, terca 3, quarta 1.5",
     noCharts: "Ainda nao ha graficos personalizados. Peca a IA para criar um com seus dados.",
@@ -417,7 +415,7 @@ const translations = {
     assistantReady: "Seu assistente esta pronto",
     assistantHint: "Teste: \"Lembre que minha meta e backend e ciberseguranca\" ou \"Tarefa: estudar Docker amanha\".",
     you: "Voce",
-    sentinel: "Sentinel",
+    assistantName: "Aether",
     chatPlaceholder: "Escreva uma instrucao, ideia ou pendencia...",
     send: "Enviar",
     importantData: "Dado importante",
@@ -478,7 +476,7 @@ const translations = {
     moveDown: "Descendre",
     charts: "Graphiques",
     smartCharts: "Graphiques intelligents",
-    chartPrompt: "Demande un graphique a Sentinel",
+    chartPrompt: "Demande un graphique a Aether",
     createChart: "Creer graphique",
     chartExample: "Ex: cree un graphique des heures d'etude: lundi 2, mardi 3, mercredi 1.5",
     noCharts: "Aucun graphique personnalise pour le moment. Demande a l'IA d'en creer un avec tes donnees.",
@@ -543,7 +541,7 @@ const translations = {
     assistantReady: "Ton assistant est pret",
     assistantHint: "Essaie: \"Souviens-toi que mon objectif est backend et cybersecurite\" ou \"Tache: etudier Docker demain\".",
     you: "Toi",
-    sentinel: "Sentinel",
+    assistantName: "Aether",
     chatPlaceholder: "Ecris une instruction, une idee ou une tache...",
     send: "Envoyer",
     importantData: "Donnee importante",
@@ -611,20 +609,20 @@ export function App() {
   const [integrations, setIntegrations] = useState<Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>>({});
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [provider, setProvider] = useState<ProviderName>("auto");
-  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem("sentinel-language") as Language) || "es");
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sentinel-theme") as Theme) || "light");
+  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem("aether-language") as Language) || "es");
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("aether-theme") as Theme) || "light");
   const [activeView, setActiveView] = useState<ViewKey>("chat");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarTouchStart, setSidebarTouchStart] = useState<number | null>(null);
-  const [sidebarCompact, setSidebarCompact] = useState(() => localStorage.getItem("sentinel-sidebar-compact") === "true");
-  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("sentinel-sidebar-hidden") === "true");
+  const [sidebarCompact, setSidebarCompact] = useState(() => localStorage.getItem("aether-sidebar-compact") === "true");
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("aether-sidebar-hidden") === "true");
   const [navSettingsOpen, setNavSettingsOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
-  const [activeModules, setActiveModules] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-modules") || "[]"));
-  const [hiddenNavItems, setHiddenNavItems] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-hidden-nav") || "[]"));
-  const [panelOrder, setPanelOrder] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-panel-order") || JSON.stringify(defaultPanelOrder)));
-  const [collapsedPanels, setCollapsedPanels] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-collapsed-panels") || "[]"));
-  const [expandedPanel, setExpandedPanel] = useState<ViewKey | null>(() => (localStorage.getItem("sentinel-expanded-panel") as ViewKey | null) || null);
+  const [activeModules, setActiveModules] = useState<string[]>(() => JSON.parse(localStorage.getItem("aether-modules") || "[]"));
+  const [hiddenNavItems, setHiddenNavItems] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("aether-hidden-nav") || "[]"));
+  const [panelOrder, setPanelOrder] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("aether-panel-order") || JSON.stringify(defaultPanelOrder)));
+  const [collapsedPanels, setCollapsedPanels] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("aether-collapsed-panels") || "[]"));
+  const [expandedPanel, setExpandedPanel] = useState<ViewKey | null>(() => (localStorage.getItem("aether-expanded-panel") as ViewKey | null) || null);
   const [globeRotation, setGlobeRotation] = useState({ x: 0, y: 0 });
   const [globeDragStart, setGlobeDragStart] = useState<{ x: number; y: number } | null>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -662,8 +660,8 @@ export function App() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [videoData, setVideoData] = useState("");
   const [videoMimeType, setVideoMimeType] = useState("");
-  const [sources, setSources] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-sources") || "[]"));
-  const [notes, setNotes] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-notes") || "[]"));
+  const [sources, setSources] = useState<string[]>(() => JSON.parse(localStorage.getItem("aether-sources") || "[]"));
+  const [notes, setNotes] = useState<string[]>(() => JSON.parse(localStorage.getItem("aether-notes") || "[]"));
   const [sourceInput, setSourceInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -677,42 +675,42 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("sentinel-theme", theme);
+    localStorage.setItem("aether-theme", theme);
   }, [theme]);
 
   useEffect(() => {
     document.documentElement.lang = language;
-    localStorage.setItem("sentinel-language", language);
+    localStorage.setItem("aether-language", language);
     setVisionPrompt((current) => Object.values(translations).some((item) => item.visionPrompt === current) ? translations[language].visionPrompt : current);
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-modules", JSON.stringify(activeModules));
+    localStorage.setItem("aether-modules", JSON.stringify(activeModules));
   }, [activeModules]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-hidden-nav", JSON.stringify(hiddenNavItems));
+    localStorage.setItem("aether-hidden-nav", JSON.stringify(hiddenNavItems));
   }, [hiddenNavItems]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-panel-order", JSON.stringify(panelOrder));
+    localStorage.setItem("aether-panel-order", JSON.stringify(panelOrder));
   }, [panelOrder]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-collapsed-panels", JSON.stringify(collapsedPanels));
+    localStorage.setItem("aether-collapsed-panels", JSON.stringify(collapsedPanels));
   }, [collapsedPanels]);
 
   useEffect(() => {
-    if (expandedPanel) localStorage.setItem("sentinel-expanded-panel", expandedPanel);
-    else localStorage.removeItem("sentinel-expanded-panel");
+    if (expandedPanel) localStorage.setItem("aether-expanded-panel", expandedPanel);
+    else localStorage.removeItem("aether-expanded-panel");
   }, [expandedPanel]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-sidebar-compact", String(sidebarCompact));
+    localStorage.setItem("aether-sidebar-compact", String(sidebarCompact));
   }, [sidebarCompact]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-sidebar-hidden", String(sidebarHidden));
+    localStorage.setItem("aether-sidebar-hidden", String(sidebarHidden));
   }, [sidebarHidden]);
 
   useEffect(() => {
@@ -742,11 +740,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-sources", JSON.stringify(sources));
+    localStorage.setItem("aether-sources", JSON.stringify(sources));
   }, [sources]);
 
   useEffect(() => {
-    localStorage.setItem("sentinel-notes", JSON.stringify(notes));
+    localStorage.setItem("aether-notes", JSON.stringify(notes));
   }, [notes]);
 
   useEffect(() => {
@@ -1251,13 +1249,13 @@ export function App() {
         onTouchEnd={(event) => finishSidebarSwipe(event.changedTouches[0].clientX)}
       >
         <div className="brand">
-          <div className="brand-mark" aria-label="Sentinel logo">
-            <Shield size={25} />
-            <Eye size={14} />
-            <Crosshair size={10} />
+          <div className="brand-mark" aria-label="Aether logo">
+            <span className="brand-letter">A</span>
+            <span className="brand-orbit orbit-one" />
+            <span className="brand-orbit orbit-two" />
           </div>
           <div>
-            <h1>Sentinel AI OS</h1>
+            <h1>Aether</h1>
             <p>{t.subtitle}</p>
           </div>
           <button
@@ -1431,7 +1429,7 @@ export function App() {
               {activeMessages.map((message) => (
                 <article className={`message ${message.role}`} key={message.id}>
                   <div className="message-meta">
-                    <span>{message.role === "user" ? t.you : t.sentinel}</span>
+                    <span>{message.role === "user" ? t.you : t.assistantName}</span>
                     {message.provider && <small>{message.provider}</small>}
                   </div>
                   <p>{message.content}</p>
@@ -1444,12 +1442,12 @@ export function App() {
               ))}
               {busy && (
                 <article className="message assistant thinking-message">
-                  <div className="sentinel-thinking" aria-label="Sentinel thinking">
-                    <Shield size={28} />
-                    <Eye size={15} />
-                    <Crosshair size={18} />
+                  <div className="aether-thinking" aria-label="Aether thinking">
+                    <span className="brand-letter">A</span>
+                    <span className="brand-orbit orbit-one" />
+                    <span className="brand-orbit orbit-two" />
                   </div>
-                  <span>Sentinel thinking...</span>
+                  <span>Aether thinking...</span>
                 </article>
               )}
             </div>

@@ -1,6 +1,6 @@
 {
-  "name": "Sentinel AI OS",
-  "short_name": "Sentinel",
+  "name": "Aether",
+  "short_name": "Aether",
   "description": "Personal AI Second Brain",
   "start_url": "/",
   "scope": "/",
@@ -10,7 +10,7 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/sentinel-icon.svg",
+      "src": "/aether-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

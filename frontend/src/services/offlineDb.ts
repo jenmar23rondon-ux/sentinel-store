@@ -9,14 +9,14 @@ export interface SyncQueueItem {
   createdAt: string;
 }
 
-class SentinelOfflineDb extends Dexie {
+class AetherOfflineDb extends Dexie {
   tasks!: Table<TaskItem, string>;
   career!: Table<JobApplication, string>;
   messages!: Table<Message, string>;
   syncQueue!: Table<SyncQueueItem, number>;
 
   constructor() {
-    super("sentinel-ai-offline");
+    super("aether-ai-offline");
     this.version(1).stores({
       tasks: "id, status, updatedAt",
       career: "id, company, role, status, date, updatedAt, synced",
@@ -26,7 +26,7 @@ class SentinelOfflineDb extends Dexie {
   }
 }
 
-export const offlineDb = new SentinelOfflineDb();
+export const offlineDb = new AetherOfflineDb();
 
 export async function queueSync(item: Omit<SyncQueueItem, "createdAt">) {
   await offlineDb.syncQueue.add({

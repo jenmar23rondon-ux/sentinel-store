@@ -1,8 +1,8 @@
-# Sentinel AI OS
+# Aether
 
 **Personal AI Second Brain** para organizar tu vida, aprender mas rapido, controlar tareas, analizar informacion y ahorrar tiempo con IA.
 
-Sentinel AI OS no busca ser "otro chatbot". La idea es construir un centro de control personal con memoria, herramientas, automatizaciones, busqueda web, analisis de imagenes, multiples modelos de IA e integraciones autorizadas con tus servicios.
+Aether no busca ser "otro chatbot". La idea es construir un centro de control personal con memoria, herramientas, automatizaciones, busqueda web, analisis de imagenes, multiples modelos de IA e integraciones autorizadas con tus servicios.
 
 ## Estado actual
 
@@ -19,7 +19,7 @@ Este repositorio ya incluye un MVP funcional:
 - Interfaz responsive para Android y navegadores moviles.
 - Modulos interactivos para activar ideas del segundo cerebro y convertirlas en tareas.
 - Action Center para preparar agendas, mensajes, correos, recordatorios y automatizaciones.
-- Deteccion inicial de intenciones desde el chat: si pides agendar o enviar algo, Sentinel crea una accion pendiente.
+- Deteccion inicial de intenciones desde el chat: si pides agendar o enviar algo, Aether crea una accion pendiente.
 - Career Dashboard con aplicaciones, estados, recruiters, salario esperado, recordatorios y asistente IA.
 - Soporte offline con PWA + Workbox + IndexedDB/Dexie.
 - Sync offline/online para Career Tracker.
@@ -45,7 +45,7 @@ Cuando no hay claves de IA, funciona en modo local. Cuando agregas claves en `.e
 Haz doble clic en:
 
 ```text
-run-sentinel.bat
+run-aether.bat
 ```
 
 Ese archivo hace esto automaticamente:
@@ -61,7 +61,7 @@ Para detener la app, vuelve a la ventana del `.bat` y presiona `Ctrl+C`.
 ### Opcion manual
 
 ```bash
-cd sentinel-ai
+cd aether-ai
 npm install
 npm run dev
 ```
@@ -75,7 +75,7 @@ En Android:
 
 1. Abre `http://TU-IP-LOCAL:5173` desde Chrome si el servidor corre en tu PC.
 2. En el menu de Chrome toca **Agregar a pantalla de inicio**.
-3. Sentinel se abrira como una app web instalada.
+3. Aether se abrira como una app web instalada.
 
 Si lo usas en el mismo equipo, abre `http://localhost:5173`.
 
@@ -121,7 +121,7 @@ Variables principales:
 
 ```env
 PORT=4100
-DATA_FILE=./data/sentinel-store.json
+DATA_FILE=./data/aether-store.json
 
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4.1-mini
@@ -142,7 +142,7 @@ SERPER_API_KEY=
 
 ### Chat Assistant
 
-Permite conversar con Sentinel, guardar conversaciones y usar contexto personal.
+Permite conversar con Aether, guardar conversaciones y usar contexto personal.
 
 Ejemplos:
 
@@ -179,7 +179,7 @@ Prepara un correo para el recruiter
 Recuérdame estudiar Docker manana
 ```
 
-Por seguridad, Sentinel no envia mensajes ni correos sin aprobacion. Primero crea una accion pendiente. Cuando se conecten Gmail, Calendar, WhatsApp, Telegram o Microsoft mediante APIs oficiales/OAuth, esas acciones podran ejecutarse desde el mismo panel.
+Por seguridad, Aether no envia mensajes ni correos sin aprobacion. Primero crea una accion pendiente. Cuando se conecten Gmail, Calendar, WhatsApp, Telegram o Microsoft mediante APIs oficiales/OAuth, esas acciones podran ejecutarse desde el mismo panel.
 
 ### Career Dashboard
 
@@ -259,7 +259,7 @@ Casos de uso:
 - Fotos de hardware, puertos, cables o componentes.
 - Imagenes de documentos para extraer informacion.
 
-Si no hay proveedor multimodal configurado, Sentinel guarda la imagen y responde con una guia local. Para analisis real de pixeles/OCR, configura OpenAI, Claude, Gemini u Ollama con un modelo compatible con vision.
+Si no hay proveedor multimodal configurado, Aether guarda la imagen y responde con una guia local. Para analisis real de pixeles/OCR, configura OpenAI, Claude, Gemini u Ollama con un modelo compatible con vision.
 
 ### Video AI
 
@@ -298,7 +298,7 @@ La interfaz incluye:
 - Logo con escudo, ojo y target.
 - Hover/tap states en tarjetas, botones, modulos, busquedas y mensajes.
 - Botones bajo respuestas del chat para copiar, reproducir, valorar y reintentar.
-- Animacion de pensamiento con el logo de Sentinel: escudo, ojo y target girando.
+- Animacion de pensamiento con el logo de Aether: letra A, orbitas y punto luminoso.
 - Selector de idioma custom con animacion, sin dropdown nativo.
 - Sidebar configurable: modo compacto y opcion para ocultar secciones que no uses.
 - Paneles configurables: minimizar, agrandar, mover arriba/abajo y persistir orden.
@@ -317,7 +317,7 @@ La interfaz incluye:
 React Frontend
       |
       v
-Node.js Sentinel Backend
+Node.js Aether Backend
       |
       +-- Chat AI
       +-- Memory System
@@ -336,7 +336,7 @@ Node.js Sentinel Backend
 ## Vision del producto
 
 ```text
-Sentinel AI OS
+Aether
 |
 +-- Chat Assistant
 +-- Vision AI
@@ -414,7 +414,7 @@ Sentinel AI OS
 - Camara.
 - Notificaciones.
 - Acciones rapidas.
-- Compartir contenido hacia Sentinel.
+- Compartir contenido hacia Aether.
 - Aprobacion de automatizaciones.
 
 ### Fase 7: Automatizaciones
@@ -431,7 +431,7 @@ Si un deploy falla
 
 ## Seguridad y privacidad
 
-Sentinel AI OS debe construirse con seguridad desde el inicio:
+Aether debe construirse con seguridad desde el inicio:
 
 - Usar APIs oficiales.
 - Pedir permisos explicitos.
@@ -456,7 +456,7 @@ Para pasar de MVP local a producto serio:
 ## Nombre
 
 ```text
-Sentinel AI OS
+Aether
 Personal AI Second Brain
 ```
 

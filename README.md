@@ -18,6 +18,8 @@ Este repositorio ya incluye un MVP funcional:
 - Tema claro y tema oscuro.
 - Interfaz responsive para Android y navegadores moviles.
 - Modulos interactivos para activar ideas del segundo cerebro y convertirlas en tareas.
+- Action Center para preparar agendas, mensajes, correos, recordatorios y automatizaciones.
+- Deteccion inicial de intenciones desde el chat: si pides agendar o enviar algo, Sentinel crea una accion pendiente.
 - Manifest PWA para usarlo desde Chrome como app instalada.
 - Dashboard web en React.
 - Backend en Node.js + TypeScript.
@@ -137,6 +139,19 @@ Guarda datos importantes sobre:
 
 Permite crear tareas, marcarlas como completadas y priorizarlas.
 
+### Action Center
+
+Permite pedirle cosas al agente y convertirlas en acciones revisables:
+
+```text
+Agenda una reunion con Juan manana a las 3 pm
+Envia un mensaje a Carlos diciendo: "Llegare a las 3 pm"
+Prepara un correo para el recruiter
+Recuérdame estudiar Docker manana
+```
+
+Por seguridad, Sentinel no envia mensajes ni correos sin aprobacion. Primero crea una accion pendiente. Cuando se conecten Gmail, Calendar, WhatsApp, Telegram o Microsoft mediante APIs oficiales/OAuth, esas acciones podran ejecutarse desde el mismo panel.
+
 ### Web Search
 
 Permite consultar informacion actual. Si `SERPER_API_KEY` esta configurada, usa Serper. Si no, usa DuckDuckGo Instant Answer como fallback.
@@ -162,6 +177,8 @@ La interfaz incluye:
 
 - Logo con escudo, ojo y target.
 - Hover/tap states en tarjetas, botones, modulos, busquedas y mensajes.
+- Botones bajo respuestas del chat para copiar, reproducir, valorar y reintentar.
+- Animacion de pensamiento con el logo de Sentinel: escudo, ojo y target girando.
 - Navegacion por secciones para pantallas pequenas.
 - Tema claro/oscuro persistente.
 - Idiomas `ES`, `EN`, `PT` y `FR`.

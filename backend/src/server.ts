@@ -8,7 +8,7 @@ import { env } from "./env.js";
 import { analyzeImage, generateAssistantReply, providerStatus } from "./providers.js";
 import { webSearch } from "./search.js";
 import { db } from "./store.js";
-import type { ProviderName } from "./types.js";
+import type { ActionItem, ActionType, ProviderName } from "./types.js";
 
 const app = express();
 
@@ -27,6 +27,7 @@ app.get("/api/bootstrap", async (_req, res) => {
     memory: store.memory,
     tasks: store.tasks,
     vision: store.vision,
+    actions: store.actions,
     providers: providerStatus(),
     integrations: integrationStatus()
   });
@@ -52,6 +53,7 @@ app.post("/api/chat", async (req, res, next) => {
 
     await autoCaptureMemory(body.message);
     await autoCaptureTask(body.message);
+    const plannedAction = await autoCreateAction(body.message);
 
     const store = await db.snapshot();
     const recentMessages = store.messages
@@ -74,10 +76,14 @@ app.post("/api/chat", async (req, res, next) => {
       taskContext
     });
 
+    const actionNote = plannedAction
+      ? `\n\nAccion preparada: ${plannedAction.title}. Queda pendiente de aprobacion en Action Center antes de ejecutarla.`
+      : "";
+
     const assistantMessage = await db.addMessage({
       conversationId: conversation.id,
       role: "assistant",
-      content: reply.content,
+      content: `${reply.content}${actionNote}`,
       provider: reply.provider
     });
 
@@ -197,6 +203,30 @@ app.delete("/api/vision/:id", async (req, res) => {
   res.status(204).send();
 });
 
+app.get("/api/actions", async (_req, res) => {
+  res.json((await db.snapshot()).actions);
+});
+
+app.post("/api/actions", async (req, res, next) => {
+  try {
+    const body = actionSchema.parse(req.body);
+    res.status(201).json(await db.createAction({ ...body, source: "manual", requiresApproval: true, status: "pending" }));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/actions/:id", async (req, res) => {
+  const action = await db.updateAction(req.params.id, req.body);
+  if (!action) return res.status(404).json({ error: "Action not found" });
+  res.json(action);
+});
+
+app.delete("/api/actions/:id", async (req, res) => {
+  await db.deleteAction(req.params.id);
+  res.status(204).send();
+});
+
 app.get("/api/integrations", (_req, res) => {
   res.json(integrationStatus());
 });
@@ -233,6 +263,14 @@ function parseDataUrl(dataUrl: string) {
   };
 }
 
+const actionSchema = z.object({
+  type: z.enum(["schedule", "message", "email", "reminder", "automation"]),
+  title: z.string().min(1),
+  target: z.string().optional(),
+  draft: z.string().optional(),
+  scheduledFor: z.string().optional()
+});
+
 async function autoCaptureMemory(message: string) {
   const normalized = message.trim();
   const match = normalized.match(/^(recuerda que|recuerda:|memory:)\s*(.+)$/i);
@@ -253,4 +291,96 @@ async function autoCaptureTask(message: string) {
     priority: "medium",
     notes: "Creada desde el chat"
   });
+}
+
+async function autoCreateAction(message: string): Promise<ActionItem | null> {
+  const plan = detectActionIntent(message);
+  if (!plan) return null;
+  return db.createAction({
+    ...plan,
+    status: "pending",
+    source: "chat",
+    requiresApproval: true
+  });
+}
+
+function detectActionIntent(message: string): Omit<ActionItem, "id" | "status" | "source" | "requiresApproval" | "createdAt" | "updatedAt"> | null {
+  const text = message.trim();
+  const lower = text.toLowerCase();
+  const target = extractTarget(text);
+  const draft = extractDraft(text);
+  const scheduledFor = extractSchedule(text);
+
+  if (/(agenda|agendar|calendario|calendar|programa|programar|schedule)/i.test(lower)) {
+    return {
+      type: "schedule",
+      title: summarizeAction("Agendar", text),
+      target,
+      draft,
+      scheduledFor
+    };
+  }
+
+  if (/(envia|enviar|mandale|m[áa]ndale|mensaje|whatsapp|telegram|discord|sms)/i.test(lower)) {
+    return {
+      type: "message",
+      title: summarizeAction("Enviar mensaje", text),
+      target,
+      draft: draft ?? text,
+      scheduledFor
+    };
+  }
+
+  if (/(correo|email|gmail|mail)/i.test(lower)) {
+    return {
+      type: "email",
+      title: summarizeAction("Preparar correo", text),
+      target,
+      draft: draft ?? text,
+      scheduledFor
+    };
+  }
+
+  if (/(recordatorio|recuerdame|recu[ée]rdame|reminder)/i.test(lower)) {
+    return {
+      type: "reminder",
+      title: summarizeAction("Crear recordatorio", text),
+      target,
+      draft,
+      scheduledFor
+    };
+  }
+
+  if (/(automatiza|automatizar|workflow|si .* entonces|cuando .* haz)/i.test(lower)) {
+    return {
+      type: "automation",
+      title: summarizeAction("Crear automatizacion", text),
+      target,
+      draft: text,
+      scheduledFor
+    };
+  }
+
+  return null;
+}
+
+function summarizeAction(prefix: string, text: string) {
+  return `${prefix}: ${text.replace(/\s+/g, " ").slice(0, 90)}`;
+}
+
+function extractTarget(text: string) {
+  const match = text.match(/\b(?:a|para|to)\s+([A-Za-z0-9_.@+\-\s]{2,40})(?:\s+(?:que|diciendo|sobre|el|la|los|las|mañana|hoy)|$)/i);
+  return match?.[1]?.trim();
+}
+
+function extractDraft(text: string) {
+  const quoted = text.match(/["“](.+?)["”]/);
+  if (quoted) return quoted[1].trim();
+  const match = text.match(/\b(?:dice|dile|diciendo|mensaje|asunto|body|contenido)\s*:?\s*(.+)$/i);
+  return match?.[1]?.trim();
+}
+
+function extractSchedule(text: string) {
+  const match = text.match(/\b(hoy|mañana|manana|lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|\d{1,2}[:.]\d{2}|\d{1,2}\s*(?:am|pm))\b.*$/i);
+  return match?.[0]?.trim();
 }

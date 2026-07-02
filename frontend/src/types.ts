@@ -51,3 +51,20 @@ export interface VisionItem {
   tags: string[];
   createdAt: string;
 }
+
+export type ActionType = "schedule" | "message" | "email" | "reminder" | "automation";
+export type ActionStatus = "pending" | "approved" | "done" | "cancelled";
+
+export interface ActionItem {
+  id: string;
+  type: ActionType;
+  title: string;
+  target?: string;
+  draft?: string;
+  scheduledFor?: string;
+  status: ActionStatus;
+  source: "chat" | "manual";
+  requiresApproval: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

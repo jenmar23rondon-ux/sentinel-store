@@ -241,13 +241,30 @@ button {
   color: var(--text);
   box-shadow: 0 4px 14px rgba(16, 24, 32, 0.04);
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .control-select:hover,
 .theme-toggle:hover {
   border-color: var(--accent);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.02);
   box-shadow: var(--shadow);
+}
+
+.control-select::after,
+.theme-toggle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 16%, transparent), transparent);
+  transform: translateX(-120%);
+  transition: transform 420ms ease;
+}
+
+.control-select:hover::after,
+.theme-toggle:hover::after {
+  transform: translateX(120%);
 }
 
 .control-select select,
@@ -349,6 +366,40 @@ button {
   line-height: 1.5;
 }
 
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  opacity: 0.72;
+  transform: translateY(2px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.message:hover .message-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.message-actions button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease, border-color 160ms ease;
+}
+
+.message-actions button:hover {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--border);
+  transform: translateY(-2px);
+}
+
 .message-meta {
   display: flex;
   justify-content: space-between;
@@ -443,6 +494,14 @@ textarea:focus {
 
 .panel-title h2 {
   font-size: 15px;
+}
+
+.panel-copy,
+.empty-mini {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0 0 10px;
 }
 
 .integrations-panel {
@@ -567,6 +626,102 @@ textarea:focus {
 
 .task-form {
   margin-bottom: 10px;
+}
+
+.action-form {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.action-form select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 11px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.action-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px;
+  background: var(--surface);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.action-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.action-card.approved {
+  border-color: rgba(30, 127, 104, 0.55);
+}
+
+.action-card.done {
+  opacity: 0.76;
+}
+
+.action-card.cancelled {
+  border-color: rgba(163, 61, 43, 0.45);
+  opacity: 0.72;
+}
+
+.action-card div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.action-card span,
+.action-card small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.action-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.action-buttons button {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  transition: transform 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.action-buttons button:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .task-form select {
@@ -754,6 +909,57 @@ textarea:focus {
   color: var(--text);
 }
 
+.thinking-message {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sentinel-thinking {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  animation: sentinelPulse 1.3s ease-in-out infinite;
+}
+
+.sentinel-thinking svg:nth-child(2),
+.sentinel-thinking svg:nth-child(3) {
+  position: absolute;
+}
+
+.sentinel-thinking svg:nth-child(2) {
+  color: var(--text);
+}
+
+.sentinel-thinking svg:nth-child(3) {
+  animation: targetSpin 0.9s linear infinite;
+  color: var(--accent-2);
+}
+
+@keyframes sentinelPulse {
+  0%, 100% {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+}
+
+@keyframes targetSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .error-banner {
   background: #ffe8e3;
   color: #9f3323;
@@ -828,6 +1034,16 @@ textarea:focus {
 
   .right-rail {
     display: block;
+  }
+
+  .messages {
+    scroll-snap-type: y proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .message,
+  .panel {
+    scroll-snap-align: start;
   }
 }
 

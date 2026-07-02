@@ -1,4 +1,4 @@
-import type { MemoryItem, Message, ProviderName, SearchResult, TaskItem, VisionItem } from "../types";
+import type { ActionItem, ActionType, MemoryItem, Message, ProviderName, SearchResult, TaskItem, VisionItem } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
 
@@ -25,6 +25,7 @@ export const api = {
     memory: MemoryItem[];
     tasks: TaskItem[];
     vision: VisionItem[];
+    actions: ActionItem[];
     providers: Record<string, boolean>;
     integrations: Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>;
   }>("/api/bootstrap"),
@@ -69,5 +70,19 @@ export const api = {
       body: JSON.stringify({ prompt, imageData, provider })
     }),
 
-  deleteVision: (id: string) => request<void>(`/api/vision/${id}`, { method: "DELETE" })
+  deleteVision: (id: string) => request<void>(`/api/vision/${id}`, { method: "DELETE" }),
+
+  addAction: (input: { type: ActionType; title: string; target?: string; draft?: string; scheduledFor?: string }) =>
+    request<ActionItem>("/api/actions", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }),
+
+  updateAction: (id: string, patch: Partial<ActionItem>) =>
+    request<ActionItem>(`/api/actions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch)
+    }),
+
+  deleteAction: (id: string) => request<void>(`/api/actions/${id}`, { method: "DELETE" })
 };

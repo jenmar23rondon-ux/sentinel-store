@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import { env } from "./env.js";
-import type { Conversation, MemoryItem, Message, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
+import type { ActionItem, Conversation, MemoryItem, Message, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
 
 const initialStore: Store = {
   conversations: [],
@@ -10,6 +10,7 @@ const initialStore: Store = {
   memory: [],
   tasks: [],
   vision: [],
+  actions: [],
   toolCalls: []
 };
 
@@ -29,6 +30,7 @@ async function ensureStore(): Promise<Store> {
     cache.memory ??= [];
     cache.tasks ??= [];
     cache.vision ??= [];
+    cache.actions ??= [];
     cache.toolCalls ??= [];
   } catch {
     cache = structuredClone(initialStore);
@@ -153,6 +155,35 @@ export const db = {
   async deleteVision(id: string) {
     const store = await ensureStore();
     store.vision = store.vision.filter((item) => item.id !== id);
+    await persist();
+  },
+
+  async createAction(input: Omit<ActionItem, "id" | "createdAt" | "updatedAt">) {
+    const store = await ensureStore();
+    const now = new Date().toISOString();
+    const action: ActionItem = {
+      ...input,
+      id: nanoid(),
+      createdAt: now,
+      updatedAt: now
+    };
+    store.actions.unshift(action);
+    await persist();
+    return action;
+  },
+
+  async updateAction(id: string, patch: Partial<ActionItem>) {
+    const store = await ensureStore();
+    const action = store.actions.find((item) => item.id === id);
+    if (!action) return null;
+    Object.assign(action, patch, { updatedAt: new Date().toISOString() });
+    await persist();
+    return action;
+  },
+
+  async deleteAction(id: string) {
+    const store = await ensureStore();
+    store.actions = store.actions.filter((item) => item.id !== id);
     await persist();
   },
 

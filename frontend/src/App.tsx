@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Circle,
+  Clipboard,
   Crosshair,
   Eye,
   FileText,
@@ -21,24 +22,29 @@ import {
   Menu,
   Mic,
   Moon,
+  Play,
   Plus,
+  RefreshCw,
   Search,
   Send,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   Smartphone,
   Sun,
   Target,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
   WalletCards,
   X
 } from "lucide-react";
 import { api } from "./services/api";
-import type { MemoryItem, Message, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
+import type { ActionItem, ActionStatus, ActionType, MemoryItem, Message, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
-type ViewKey = "chat" | "tasks" | "memory" | "vision" | "search" | "modules";
+type ViewKey = "chat" | "actions" | "tasks" | "memory" | "vision" | "search" | "modules";
 
 const translations = {
   es: {
@@ -59,6 +65,22 @@ const translations = {
     fallback: "fallback",
     pending: "pendiente",
     modules: "Modulos",
+    actions: "Acciones",
+    actionCenter: "Action Center",
+    actionCopy: "Prepara agendas, mensajes, correos y automatizaciones con aprobacion antes de ejecutar.",
+    approve: "Aprobar",
+    complete: "Completar",
+    cancel: "Cancelar",
+    manualAction: "Nueva accion",
+    target: "Persona/destino",
+    draft: "Mensaje o detalle",
+    schedule: "Horario",
+    addAction: "Crear accion",
+    noActions: "Aun no hay acciones. Pidele al agente: agenda una reunion, prepara un mensaje o crea un recordatorio.",
+    actionPending: "Pendiente",
+    actionApproved: "Aprobada",
+    actionDone: "Completada",
+    actionCancelled: "Cancelada",
     chat: "Chat",
     tasks: "Tareas",
     memory: "Memoria",
@@ -114,6 +136,22 @@ const translations = {
     fallback: "fallback",
     pending: "pending",
     modules: "Modules",
+    actions: "Actions",
+    actionCenter: "Action Center",
+    actionCopy: "Prepare schedules, messages, emails and automations with approval before execution.",
+    approve: "Approve",
+    complete: "Complete",
+    cancel: "Cancel",
+    manualAction: "New action",
+    target: "Person/destination",
+    draft: "Message or detail",
+    schedule: "Schedule",
+    addAction: "Create action",
+    noActions: "No actions yet. Ask the agent to schedule a meeting, prepare a message or create a reminder.",
+    actionPending: "Pending",
+    actionApproved: "Approved",
+    actionDone: "Completed",
+    actionCancelled: "Cancelled",
     chat: "Chat",
     tasks: "Tasks",
     memory: "Memory",
@@ -169,6 +207,22 @@ const translations = {
     fallback: "fallback",
     pending: "pendente",
     modules: "Modulos",
+    actions: "Acoes",
+    actionCenter: "Action Center",
+    actionCopy: "Prepare agendas, mensagens, emails e automacoes com aprovacao antes de executar.",
+    approve: "Aprovar",
+    complete: "Concluir",
+    cancel: "Cancelar",
+    manualAction: "Nova acao",
+    target: "Pessoa/destino",
+    draft: "Mensagem ou detalhe",
+    schedule: "Horario",
+    addAction: "Criar acao",
+    noActions: "Ainda nao ha acoes. Peca ao agente para agendar uma reuniao, preparar uma mensagem ou criar um lembrete.",
+    actionPending: "Pendente",
+    actionApproved: "Aprovada",
+    actionDone: "Concluida",
+    actionCancelled: "Cancelada",
     chat: "Chat",
     tasks: "Tarefas",
     memory: "Memoria",
@@ -224,6 +278,22 @@ const translations = {
     fallback: "fallback",
     pending: "en attente",
     modules: "Modules",
+    actions: "Actions",
+    actionCenter: "Action Center",
+    actionCopy: "Prepare agendas, messages, emails et automatisations avec approbation avant execution.",
+    approve: "Approuver",
+    complete: "Terminer",
+    cancel: "Annuler",
+    manualAction: "Nouvelle action",
+    target: "Personne/destination",
+    draft: "Message ou detail",
+    schedule: "Horaire",
+    addAction: "Creer action",
+    noActions: "Aucune action pour l'instant. Demande a l'agent de planifier une reunion, preparer un message ou creer un rappel.",
+    actionPending: "En attente",
+    actionApproved: "Approuvee",
+    actionDone: "Terminee",
+    actionCancelled: "Annulee",
     chat: "Chat",
     tasks: "Taches",
     memory: "Memoire",
@@ -264,6 +334,10 @@ const translations = {
 };
 
 const moduleCatalog = [
+  { id: "workspaces", icon: SlidersHorizontal, title: "Workspaces", detail: "Personal, trabajo, backend, cyber, idiomas, finanzas y casa." },
+  { id: "knowledge", icon: Brain, title: "Knowledge Base", detail: "PDF, videos, Drive, websites, notas, imagenes y audio indexados." },
+  { id: "history", icon: Clipboard, title: "Full History", detail: "Preguntas, respuestas, IA usada, utilidad, costos y resultados." },
+  { id: "multi-ai", icon: Bot, title: "Multi AI Router", detail: "OpenAI, Claude, Gemini, Perplexity, Grok, Ollama y Codex." },
   { id: "career", icon: BriefcaseBusiness, title: "Career Dashboard", detail: "Vacantes, entrevistas, CV, GitHub y LinkedIn." },
   { id: "learning", icon: GraduationCap, title: "Learning Coach", detail: "Plan de estudio, preguntas, progreso y repasos." },
   { id: "security", icon: ShieldCheck, title: "Cybersecurity", detail: "CVEs, SIEM, OWASP, MITRE, IOC y laboratorios." },
@@ -283,6 +357,7 @@ export function App() {
   const [memory, setMemory] = useState<MemoryItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [vision, setVision] = useState<VisionItem[]>([]);
+  const [actions, setActions] = useState<ActionItem[]>([]);
   const [integrations, setIntegrations] = useState<Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>>({});
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [provider, setProvider] = useState<ProviderName>("auto");
@@ -295,6 +370,11 @@ export function App() {
   const [memoryInput, setMemoryInput] = useState("");
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState<TaskItem["priority"]>("medium");
+  const [actionType, setActionType] = useState<ActionType>("message");
+  const [actionTitle, setActionTitle] = useState("");
+  const [actionTarget, setActionTarget] = useState("");
+  const [actionDraft, setActionDraft] = useState("");
+  const [actionSchedule, setActionSchedule] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [visionPrompt, setVisionPrompt] = useState(translations.es.visionPrompt);
@@ -326,6 +406,7 @@ export function App() {
         setMemory(data.memory);
         setTasks(data.tasks);
         setVision(data.vision);
+        setActions(data.actions);
         setIntegrations(data.integrations);
         const latest = data.messages.at(-1);
         if (latest) setConversationId(latest.conversationId);
@@ -339,8 +420,10 @@ export function App() {
   );
 
   const openTasks = tasks.filter((task) => task.status === "open");
+  const pendingActions = actions.filter((action) => action.status === "pending" || action.status === "approved");
   const navItems: { key: ViewKey; label: string; icon: ReactNode }[] = [
     { key: "chat", label: t.chat, icon: <Bot size={17} /> },
+    { key: "actions", label: t.actions, icon: <Play size={17} /> },
     { key: "tasks", label: t.tasks, icon: <CheckCircle2 size={17} /> },
     { key: "memory", label: t.memory, icon: <Brain size={17} /> },
     { key: "vision", label: t.visionAI, icon: <ImagePlus size={17} /> },
@@ -362,6 +445,7 @@ export function App() {
       const refreshed = await api.bootstrap();
       setMemory(refreshed.memory);
       setTasks(refreshed.tasks);
+      setActions(refreshed.actions);
       setActiveView("chat");
     } catch (err) {
       setError(err instanceof Error ? err.message : t.noSend);
@@ -384,6 +468,33 @@ export function App() {
     const item = await api.addTask(taskInput.trim(), taskPriority);
     setTasks((current) => [item, ...current]);
     setTaskInput("");
+  }
+
+  async function addAction(event: FormEvent) {
+    event.preventDefault();
+    if (!actionTitle.trim()) return;
+    const item = await api.addAction({
+      type: actionType,
+      title: actionTitle.trim(),
+      target: actionTarget.trim() || undefined,
+      draft: actionDraft.trim() || undefined,
+      scheduledFor: actionSchedule.trim() || undefined
+    });
+    setActions((current) => [item, ...current]);
+    setActionTitle("");
+    setActionTarget("");
+    setActionDraft("");
+    setActionSchedule("");
+  }
+
+  async function updateActionStatus(action: ActionItem, status: ActionStatus) {
+    const updated = await api.updateAction(action.id, { status });
+    setActions((current) => current.map((item) => (item.id === action.id ? updated : item)));
+  }
+
+  async function removeAction(id: string) {
+    await api.deleteAction(id);
+    setActions((current) => current.filter((item) => item.id !== id));
   }
 
   async function addModuleTask(title: string) {
@@ -487,7 +598,7 @@ export function App() {
         <section className="metric-grid">
           <Metric icon={<Brain size={18} />} label={t.memories} value={memory.length} />
           <Metric icon={<CheckCircle2 size={18} />} label={t.openTasks} value={openTasks.length} />
-          <Metric icon={<ImagePlus size={18} />} label={t.vision} value={vision.length} />
+          <Metric icon={<Play size={18} />} label={t.actions} value={pendingActions.length} />
         </section>
 
         <section className="panel integrations-panel">
@@ -571,8 +682,19 @@ export function App() {
                     {message.provider && <small>{message.provider}</small>}
                   </div>
                   <p>{message.content}</p>
+                  <MessageActions message={message} />
                 </article>
               ))}
+              {busy && (
+                <article className="message assistant thinking-message">
+                  <div className="sentinel-thinking" aria-label="Sentinel thinking">
+                    <Shield size={28} />
+                    <Eye size={15} />
+                    <Crosshair size={18} />
+                  </div>
+                  <span>Sentinel thinking...</span>
+                </article>
+              )}
             </div>
             <form className="composer" onSubmit={sendMessage}>
               <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder={t.chatPlaceholder} />
@@ -583,6 +705,45 @@ export function App() {
           </section>
 
           <aside className="right-rail">
+            <Panel icon={<Play size={17} />} title={t.actionCenter} view="actions" activeView={activeView}>
+              <p className="panel-copy">{t.actionCopy}</p>
+              <form className="action-form" onSubmit={addAction}>
+                <select value={actionType} onChange={(event) => setActionType(event.target.value as ActionType)}>
+                  <option value="message">Message</option>
+                  <option value="email">Email</option>
+                  <option value="schedule">Schedule</option>
+                  <option value="reminder">Reminder</option>
+                  <option value="automation">Automation</option>
+                </select>
+                <input value={actionTitle} onChange={(event) => setActionTitle(event.target.value)} placeholder={t.manualAction} />
+                <input value={actionTarget} onChange={(event) => setActionTarget(event.target.value)} placeholder={t.target} />
+                <input value={actionSchedule} onChange={(event) => setActionSchedule(event.target.value)} placeholder={t.schedule} />
+                <textarea value={actionDraft} onChange={(event) => setActionDraft(event.target.value)} placeholder={t.draft} rows={3} />
+                <button className="wide-button"><Plus size={17} />{t.addAction}</button>
+              </form>
+              <div className="action-list">
+                {actions.length === 0 && <p className="empty-mini">{t.noActions}</p>}
+                {actions.slice(0, 8).map((action) => (
+                  <article className={`action-card ${action.status}`} key={action.id}>
+                    <div>
+                      <strong>{action.title}</strong>
+                      <span>{actionLabel(action.status, t)}</span>
+                    </div>
+                    {(action.target || action.scheduledFor) && (
+                      <small>{[action.target, action.scheduledFor].filter(Boolean).join(" · ")}</small>
+                    )}
+                    {action.draft && <p>{action.draft}</p>}
+                    <div className="action-buttons">
+                      <button onClick={() => updateActionStatus(action, "approved")} title={t.approve}><ThumbsUp size={15} />{t.approve}</button>
+                      <button onClick={() => updateActionStatus(action, "done")} title={t.complete}><CheckCircle2 size={15} />{t.complete}</button>
+                      <button onClick={() => updateActionStatus(action, "cancelled")} title={t.cancel}><ThumbsDown size={15} />{t.cancel}</button>
+                      <button onClick={() => removeAction(action.id)} title={t.delete}><Trash2 size={15} /></button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </Panel>
+
             <Panel icon={<Brain size={17} />} title={t.memory} view="memory" activeView={activeView}>
               <form className="inline-form" onSubmit={addMemory}>
                 <input value={memoryInput} onChange={(event) => setMemoryInput(event.target.value)} placeholder={t.importantData} />
@@ -706,6 +867,29 @@ function Panel({ icon, title, children, view, activeView }: { icon: ReactNode; t
       {children}
     </section>
   );
+}
+
+function MessageActions({ message }: { message: Message }) {
+  async function copyMessage() {
+    await navigator.clipboard?.writeText(message.content);
+  }
+
+  return (
+    <div className="message-actions">
+      <button onClick={copyMessage} title="Copy"><Clipboard size={15} /></button>
+      {message.role === "assistant" && <button title="Play"><Play size={15} /></button>}
+      <button title="Like"><ThumbsUp size={15} /></button>
+      <button title="Dislike"><ThumbsDown size={15} /></button>
+      <button title="Retry"><RefreshCw size={15} /></button>
+    </div>
+  );
+}
+
+function actionLabel(status: ActionStatus, t: (typeof translations)["es"]) {
+  if (status === "approved") return t.actionApproved;
+  if (status === "done") return t.actionDone;
+  if (status === "cancelled") return t.actionCancelled;
+  return t.actionPending;
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {

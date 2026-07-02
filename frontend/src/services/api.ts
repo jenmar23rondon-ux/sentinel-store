@@ -1,4 +1,4 @@
-import type { ActionItem, ActionType, ActivityEvent, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "../types";
+import type { ActionItem, ActionType, ActivityEvent, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem, WorldPulse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
 
@@ -117,5 +117,13 @@ export const api = {
     request<NotificationSettings>("/api/notifications/settings", {
       method: "PATCH",
       body: JSON.stringify(patch)
+    }),
+
+  worldPulse: () => request<WorldPulse>("/api/world-pulse"),
+
+  analyzeVideo: (input: { question: string; youtubeUrl?: string; videoData?: string; mimeType?: string }) =>
+    request<{ provider: string; content: string }>("/api/video/analyze", {
+      method: "POST",
+      body: JSON.stringify(input)
     })
 };

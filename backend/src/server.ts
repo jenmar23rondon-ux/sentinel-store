@@ -15,7 +15,7 @@ import type { ActionItem, ActionType, ProviderName } from "./types.js";
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "16mb" }));
+app.use(express.json({ limit: "80mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, name: "Sentinel AI", time: new Date().toISOString() });
@@ -155,6 +155,38 @@ app.post("/api/search", async (req, res, next) => {
     const results = await webSearch(body.query);
     await db.addToolCall({ name: "web_search", input: body, output: results });
     res.json(results);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/world-pulse", async (_req, res) => {
+  const [news, currencies, gold] = await Promise.all([
+    fetchWorldNews().catch(() => fallbackNews()),
+    fetchCurrencies().catch(() => fallbackCurrencies()),
+    fetchGold().catch(() => ({ label: "Gold spot", value: "Unavailable", change: "Add a metals API key later" }))
+  ]);
+
+  res.json({
+    updatedAt: new Date().toISOString(),
+    news,
+    currencies,
+    gold,
+    economies: economyRanking()
+  });
+});
+
+app.post("/api/video/analyze", async (req, res, next) => {
+  try {
+    const body = z.object({
+      question: z.string().min(1),
+      youtubeUrl: z.string().optional(),
+      videoData: z.string().optional(),
+      mimeType: z.string().optional()
+    }).parse(req.body);
+
+    const content = await analyzeVideoWithGemini(body.question, body.youtubeUrl, body.videoData, body.mimeType);
+    res.json({ provider: env.geminiApiKey ? "gemini-1.5-pro" : "local", content });
   } catch (error) {
     next(error);
   }
@@ -362,6 +394,108 @@ function integrationStatus() {
     calendar: { configured: false, label: "Google Calendar OAuth", next: true },
     microsoft365: { configured: false, label: "Microsoft 365 Graph", next: true }
   };
+}
+
+async function fetchWorldNews() {
+  const feeds = [
+    { country: "United States", city: "New York", url: "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en", lat: 40.7128, lng: -74.006 },
+    { country: "Colombia", city: "Bogota", url: "https://news.google.com/rss?hl=es-419&gl=CO&ceid=CO:es-419", lat: 4.711, lng: -74.0721 },
+    { country: "Brazil", city: "Sao Paulo", url: "https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt-419", lat: -23.5558, lng: -46.6396 },
+    { country: "France", city: "Paris", url: "https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr", lat: 48.8566, lng: 2.3522 },
+    { country: "Japan", city: "Tokyo", url: "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja", lat: 35.6762, lng: 139.6503 },
+    { country: "India", city: "New Delhi", url: "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en", lat: 28.6139, lng: 77.209 }
+  ];
+
+  const results = [];
+  for (const feed of feeds) {
+    const response = await fetch(feed.url);
+    const xml = await response.text();
+    const title = decodeXml(xml.match(/<item>[\s\S]*?<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ?? xml.match(/<item>[\s\S]*?<title>(.*?)<\/title>/)?.[1] ?? "Latest headlines");
+    const link = decodeXml(xml.match(/<item>[\s\S]*?<link>(.*?)<\/link>/)?.[1] ?? feed.url);
+    results.push({ ...feed, title, link, impact: inferNewsImpact(title) });
+  }
+  return results;
+}
+
+async function fetchCurrencies() {
+  const response = await fetch("https://open.er-api.com/v6/latest/USD");
+  const data = await response.json() as { rates?: Record<string, number> };
+  const rates = data.rates ?? {};
+  return [
+    { code: "USD", label: "US Dollar", value: 1 },
+    { code: "COP", label: "Colombian Peso", value: rates.COP },
+    { code: "EUR", label: "Euro", value: rates.EUR },
+    { code: "GBP", label: "British Pound", value: rates.GBP },
+    { code: "JPY", label: "Japanese Yen", value: rates.JPY },
+    { code: "BRL", label: "Brazilian Real", value: rates.BRL },
+    { code: "MXN", label: "Mexican Peso", value: rates.MXN }
+  ].filter((item) => item.value);
+}
+
+async function fetchGold() {
+  const response = await fetch("https://api.metals.live/v1/spot/gold");
+  const data = await response.json() as unknown[];
+  const value = Array.isArray(data) ? JSON.stringify(data[0]).match(/[\d.]+/)?.[0] : undefined;
+  return { label: "Gold spot USD/oz", value: value ? Number(value).toFixed(2) : "Unavailable", change: "live metals feed" };
+}
+
+function economyRanking() {
+  return [
+    { rank: 1, country: "United States", gdpUsdT: 28.8, growthProbability: 72, risk: "medium" },
+    { rank: 2, country: "China", gdpUsdT: 18.5, growthProbability: 63, risk: "medium-high" },
+    { rank: 3, country: "Germany", gdpUsdT: 4.6, growthProbability: 54, risk: "medium" },
+    { rank: 4, country: "Japan", gdpUsdT: 4.1, growthProbability: 49, risk: "medium" },
+    { rank: 5, country: "India", gdpUsdT: 3.9, growthProbability: 82, risk: "medium" },
+    { rank: 6, country: "United Kingdom", gdpUsdT: 3.5, growthProbability: 57, risk: "medium" },
+    { rank: 7, country: "France", gdpUsdT: 3.1, growthProbability: 55, risk: "medium" },
+    { rank: 8, country: "Brazil", gdpUsdT: 2.3, growthProbability: 61, risk: "medium-high" },
+    { rank: 9, country: "Italy", gdpUsdT: 2.3, growthProbability: 45, risk: "medium" },
+    { rank: 10, country: "Canada", gdpUsdT: 2.2, growthProbability: 58, risk: "low-medium" },
+    { rank: 42, country: "Colombia", gdpUsdT: 0.36, growthProbability: 62, risk: "medium-high" }
+  ];
+}
+
+async function analyzeVideoWithGemini(question: string, youtubeUrl?: string, videoData?: string, mimeType?: string) {
+  if (!env.geminiApiKey) {
+    return `Video AI esta preparado, pero falta GEMINI_API_KEY en backend/.env. Pregunta recibida: ${question}${youtubeUrl ? `\nYouTube: ${youtubeUrl}` : ""}`;
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.geminiVideoModel}:generateContent?key=${env.geminiApiKey}`;
+  const parts: unknown[] = [{ text: `${question}\n\nAnaliza el video, resume eventos, extrae puntos importantes y responde con pasos accionables.` }];
+  if (youtubeUrl) parts.push({ text: `YouTube URL: ${youtubeUrl}` });
+  if (videoData && mimeType) parts.push({ inlineData: { mimeType, data: videoData.replace(/^data:.*;base64,/, "") } });
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ role: "user", parts }] })
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const data = await response.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  return data.candidates?.[0]?.content?.parts?.map((item) => item.text ?? "").join("") || "No recibi analisis de Gemini.";
+}
+
+function decodeXml(value: string) {
+  return value.replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+
+function inferNewsImpact(title: string) {
+  if (/(war|attack|crisis|inflation|rate|election|earthquake|guerra|crisis|inflaci)/i.test(title)) return "high";
+  if (/(market|economy|ai|security|climate|mercado|econom)/i.test(title)) return "medium";
+  return "watch";
+}
+
+function fallbackNews() {
+  return [
+    { country: "Colombia", city: "Bogota", lat: 4.711, lng: -74.0721, title: "World news feed unavailable", link: "https://news.google.com", impact: "watch" }
+  ];
+}
+
+function fallbackCurrencies() {
+  return [
+    { code: "USD", label: "US Dollar", value: 1 },
+    { code: "COP", label: "Colombian Peso", value: 4000 }
+  ];
 }
 
 function parseDataUrl(dataUrl: string) {

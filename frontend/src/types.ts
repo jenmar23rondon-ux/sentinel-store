@@ -107,3 +107,35 @@ export interface NotificationSettings {
   careerReminders: boolean;
   locationInsights: boolean;
 }
+
+export interface WorldNewsItem {
+  country: string;
+  city: string;
+  lat: number;
+  lng: number;
+  title: string;
+  link: string;
+  impact: string;
+}
+
+export interface CurrencyRate {
+  code: string;
+  label: string;
+  value: number;
+}
+
+export interface EconomyRank {
+  rank: number;
+  country: string;
+  gdpUsdT: number;
+  growthProbability: number;
+  risk: string;
+}
+
+export interface WorldPulse {
+  updatedAt: string;
+  news: WorldNewsItem[];
+  currencies: CurrencyRate[];
+  gold: { label: string; value: string | number; change: string };
+  economies: EconomyRank[];
+}

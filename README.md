@@ -27,6 +27,10 @@ Este repositorio ya incluye un MVP funcional:
 - Activity Tracker inicial para GPS autorizado, tiempo en apps registrado manualmente y eventos.
 - Toggle para apagar/encender notificaciones.
 - Migracion PostgreSQL y script JSON -> PostgreSQL.
+- World Pulse con noticias por pais/ciudad, globo interactivo, monedas, peso colombiano, oro y ranking PIB.
+- Video AI con Gemini 1.5 Pro para subir videos o analizar una URL de YouTube.
+- Notebook/Studio con fuentes, notas y outputs tipo audio/video overview, reportes, quiz y data table.
+- Agent Lab para preparar automatizaciones como llenar formularios, sugerir mensajes o tareas de navegador.
 - Manifest PWA para usarlo desde Chrome como app instalada.
 - Dashboard web en React.
 - Backend en Node.js + TypeScript.
@@ -228,6 +232,18 @@ Limitacion importante: una PWA en Android no puede leer automaticamente todo el 
 
 Permite consultar informacion actual. Si `SERPER_API_KEY` esta configurada, usa Serper. Si no, usa DuckDuckGo Instant Answer como fallback.
 
+### World Pulse
+
+Una seccion para entender que esta pasando en el mundo:
+
+- Noticias importantes por pais y ciudad.
+- Globo mundial interactivo con puntos de noticia.
+- Monedas importantes y peso colombiano.
+- Oro.
+- Ranking de paises por PIB y probabilidad estimada de crecimiento.
+
+Las noticias usan feeds RSS publicos y monedas usan una API abierta. Para datos financieros de produccion conviene conectar proveedores oficiales/pagos.
+
 ### Vision AI
 
 Permite subir imagenes o capturas y analizarlas con un modelo multimodal.
@@ -242,6 +258,36 @@ Casos de uso:
 - Imagenes de documentos para extraer informacion.
 
 Si no hay proveedor multimodal configurado, Sentinel guarda la imagen y responde con una guia local. Para analisis real de pixeles/OCR, configura OpenAI, Claude, Gemini u Ollama con un modelo compatible con vision.
+
+### Video AI
+
+Permite subir un video o pegar una URL de YouTube y hacer preguntas. Usa Gemini cuando configuras:
+
+```env
+GEMINI_API_KEY=
+GEMINI_VIDEO_MODEL=gemini-1.5-pro
+```
+
+Si no hay clave, responde en modo local indicando que falta configuracion.
+
+### Notebook/Studio
+
+Inspirado en flujos tipo NotebookLM:
+
+- Agregar fuentes.
+- Guardar notas.
+- Preparar outputs: Audio Overview, Video Overview, Mind Map, Reports, Flashcards, Quiz, Infographic y Data Table.
+
+### Agent Lab
+
+Permite preparar automatizaciones:
+
+- Llenar formularios.
+- Sugerir mensajes para enviar a personas.
+- Preparar tareas de navegador.
+
+Por seguridad, las acciones se crean como pendientes y deben aprobarse antes de ejecutarse.
+
 
 ### Experiencia interactiva
 

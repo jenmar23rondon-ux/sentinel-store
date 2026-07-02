@@ -2,6 +2,7 @@ import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Bot,
   Bell,
+  BookOpen,
   Brain,
   BriefcaseBusiness,
   CalendarDays,
@@ -24,6 +25,7 @@ import {
   Menu,
   Mic,
   Moon,
+  Newspaper,
   Play,
   Plus,
   RefreshCw,
@@ -38,6 +40,8 @@ import {
   ThumbsDown,
   ThumbsUp,
   Trash2,
+  Video,
+  Wand2,
   WalletCards,
   WifiOff,
   X
@@ -46,10 +50,11 @@ import { api } from "./services/api";
 import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
 import { offlineDb, queueSync } from "./services/offlineDb";
 import type { ActionItem, ActionStatus, ActionType, ActivityEvent, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
+import type { WorldPulse } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
-type ViewKey = "chat" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
+type ViewKey = "chat" | "world" | "video" | "notebook" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
 
 const translations = {
   es: {
@@ -70,6 +75,23 @@ const translations = {
     fallback: "fallback",
     pending: "pendiente",
     modules: "Modulos",
+    world: "Mundo",
+    worldPulse: "Pulso mundial",
+    videoAi: "Video AI",
+    notebook: "Notebook",
+    automationLab: "Agent Lab",
+    currencies: "Monedas",
+    richestCountries: "Ranking PIB",
+    growthChance: "Crecimiento",
+    uploadVideo: "Subir video",
+    youtubeUrl: "URL de YouTube",
+    videoQuestion: "Pregunta sobre el video",
+    analyzeVideo: "Analizar video",
+    sources: "Fuentes",
+    addSource: "Agregar fuente",
+    addNote: "Agregar nota",
+    studio: "Studio",
+    formAgent: "Automatizar formularios",
     actions: "Acciones",
     career: "Carrera",
     activity: "Actividad",
@@ -162,6 +184,23 @@ const translations = {
     fallback: "fallback",
     pending: "pending",
     modules: "Modules",
+    world: "World",
+    worldPulse: "World Pulse",
+    videoAi: "Video AI",
+    notebook: "Notebook",
+    automationLab: "Agent Lab",
+    currencies: "Currencies",
+    richestCountries: "GDP Ranking",
+    growthChance: "Growth",
+    uploadVideo: "Upload video",
+    youtubeUrl: "YouTube URL",
+    videoQuestion: "Question about the video",
+    analyzeVideo: "Analyze video",
+    sources: "Sources",
+    addSource: "Add source",
+    addNote: "Add note",
+    studio: "Studio",
+    formAgent: "Automate forms",
     actions: "Actions",
     career: "Career",
     activity: "Activity",
@@ -254,6 +293,23 @@ const translations = {
     fallback: "fallback",
     pending: "pendente",
     modules: "Modulos",
+    world: "Mundo",
+    worldPulse: "Pulso mundial",
+    videoAi: "Video AI",
+    notebook: "Notebook",
+    automationLab: "Agent Lab",
+    currencies: "Moedas",
+    richestCountries: "Ranking PIB",
+    growthChance: "Crescimento",
+    uploadVideo: "Enviar video",
+    youtubeUrl: "URL do YouTube",
+    videoQuestion: "Pergunta sobre o video",
+    analyzeVideo: "Analisar video",
+    sources: "Fontes",
+    addSource: "Adicionar fonte",
+    addNote: "Adicionar nota",
+    studio: "Studio",
+    formAgent: "Automatizar formularios",
     actions: "Acoes",
     career: "Carreira",
     activity: "Atividade",
@@ -346,6 +402,23 @@ const translations = {
     fallback: "fallback",
     pending: "en attente",
     modules: "Modules",
+    world: "Monde",
+    worldPulse: "Pouls mondial",
+    videoAi: "Video AI",
+    notebook: "Notebook",
+    automationLab: "Agent Lab",
+    currencies: "Devises",
+    richestCountries: "Classement PIB",
+    growthChance: "Croissance",
+    uploadVideo: "Ajouter video",
+    youtubeUrl: "URL YouTube",
+    videoQuestion: "Question sur la video",
+    analyzeVideo: "Analyser video",
+    sources: "Sources",
+    addSource: "Ajouter source",
+    addNote: "Ajouter note",
+    studio: "Studio",
+    formAgent: "Automatiser formulaires",
     actions: "Actions",
     career: "Carriere",
     activity: "Activite",
@@ -487,6 +560,15 @@ export function App() {
   });
   const [careerPrompt, setCareerPrompt] = useState("Prepare me for my interview");
   const [careerAiReply, setCareerAiReply] = useState("");
+  const [worldPulse, setWorldPulse] = useState<WorldPulse | null>(null);
+  const [videoQuestion, setVideoQuestion] = useState("Resume este video y dime las ideas importantes.");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [videoData, setVideoData] = useState("");
+  const [videoMimeType, setVideoMimeType] = useState("");
+  const [sources, setSources] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-sources") || "[]"));
+  const [notes, setNotes] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-notes") || "[]"));
+  const [sourceInput, setSourceInput] = useState("");
+  const [noteInput, setNoteInput] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [visionPrompt, setVisionPrompt] = useState(translations.es.visionPrompt);
@@ -510,6 +592,14 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("sentinel-modules", JSON.stringify(activeModules));
   }, [activeModules]);
+
+  useEffect(() => {
+    localStorage.setItem("sentinel-sources", JSON.stringify(sources));
+  }, [sources]);
+
+  useEffect(() => {
+    localStorage.setItem("sentinel-notes", JSON.stringify(notes));
+  }, [notes]);
 
   useEffect(() => {
     const goOnline = () => {
@@ -554,6 +644,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    api.worldPulse().then(setWorldPulse).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:4100/ws`;
     const socket = new WebSocket(wsUrl);
     socket.onmessage = (event) => {
@@ -578,6 +672,9 @@ export function App() {
   const pendingActions = actions.filter((action) => action.status === "pending" || action.status === "approved");
   const navItems: { key: ViewKey; label: string; icon: ReactNode }[] = [
     { key: "chat", label: t.chat, icon: <Bot size={17} /> },
+    { key: "world", label: t.world, icon: <Globe2 size={17} /> },
+    { key: "video", label: t.videoAi, icon: <Video size={17} /> },
+    { key: "notebook", label: t.notebook, icon: <BookOpen size={17} /> },
     { key: "actions", label: t.actions, icon: <Play size={17} /> },
     { key: "career", label: t.career, icon: <BriefcaseBusiness size={17} /> },
     { key: "activity", label: t.activity, icon: <MapPin size={17} /> },
@@ -642,6 +739,15 @@ export function App() {
     setActionTarget("");
     setActionDraft("");
     setActionSchedule("");
+  }
+
+  async function createAutomationTemplate(title: string, draft: string) {
+    const item = await api.addAction({
+      type: "automation",
+      title,
+      draft
+    });
+    setActions((current) => [item, ...current]);
   }
 
   async function addCareerApplication(event: FormEvent) {
@@ -724,6 +830,60 @@ export function App() {
   async function toggleNotifications() {
     const updated = await api.updateNotificationSettings({ enabled: !notificationSettings.enabled });
     setNotificationSettings(updated);
+  }
+
+  async function analyzeVideo(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const reply = await api.analyzeVideo({
+        question: videoQuestion,
+        youtubeUrl: youtubeUrl || undefined,
+        videoData: videoData || undefined,
+        mimeType: videoMimeType || undefined
+      });
+      const conversation = await api.chat(`Video AI: ${videoQuestion}`, "local", conversationId);
+      setConversationId(conversation.conversation.id);
+      setMessages((current) => [
+        ...current,
+        ...conversation.messages.slice(0, 1),
+        {
+          id: crypto.randomUUID(),
+          conversationId: conversation.conversation.id,
+          role: "assistant",
+          content: reply.content,
+          provider: reply.provider,
+          createdAt: new Date().toISOString()
+        }
+      ]);
+      setActiveView("chat");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.noVision);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleVideoFile(file?: File) {
+    if (!file) return;
+    setVideoMimeType(file.type || "video/mp4");
+    const reader = new FileReader();
+    reader.onload = () => setVideoData(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  function addSource(event: FormEvent) {
+    event.preventDefault();
+    if (!sourceInput.trim()) return;
+    setSources((current) => [sourceInput.trim(), ...current]);
+    setSourceInput("");
+  }
+
+  function addNote(event: FormEvent) {
+    event.preventDefault();
+    if (!noteInput.trim()) return;
+    setNotes((current) => [noteInput.trim(), ...current]);
+    setNoteInput("");
   }
 
   async function updateActionStatus(action: ActionItem, status: ActionStatus) {
@@ -950,8 +1110,115 @@ export function App() {
           </section>
 
           <aside className="right-rail">
+            <Panel icon={<Globe2 size={17} />} title={t.worldPulse} view="world" activeView={activeView}>
+              <div className="world-layout">
+                <div className="globe-card">
+                  <div className="globe">
+                    {worldPulse?.news.map((item, index) => (
+                      <span
+                        className={`map-pin impact-${item.impact}`}
+                        style={{ left: `${((item.lng + 180) / 360) * 100}%`, top: `${((90 - item.lat) / 180) * 100}%` }}
+                        key={`${item.country}-${index}`}
+                        title={`${item.city}: ${item.title}`}
+                      />
+                    ))}
+                  </div>
+                  <small>{worldPulse ? new Date(worldPulse.updatedAt).toLocaleString() : "Loading world pulse..."}</small>
+                </div>
+                <div className="news-list">
+                  {worldPulse?.news.map((item) => (
+                    <a href={item.link} target="_blank" rel="noreferrer" className="news-card" key={`${item.country}-${item.title}`}>
+                      <strong>{item.country} · {item.city}</strong>
+                      <span>{item.title}</span>
+                      <em>{item.impact}</em>
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <div className="market-grid">
+                <section>
+                  <h3>{t.currencies}</h3>
+                  {worldPulse?.currencies.map((item) => (
+                    <div className="market-row" key={item.code}>
+                      <span>{item.code}</span>
+                      <strong>{Number(item.value).toLocaleString()}</strong>
+                    </div>
+                  ))}
+                  {worldPulse?.gold && (
+                    <div className="market-row gold">
+                      <span>{worldPulse.gold.label}</span>
+                      <strong>{worldPulse.gold.value}</strong>
+                    </div>
+                  )}
+                </section>
+                <section>
+                  <h3>{t.richestCountries}</h3>
+                  {worldPulse?.economies.map((item) => (
+                    <div className="economy-row" key={`${item.rank}-${item.country}`}>
+                      <span>#{item.rank} {item.country}</span>
+                      <strong>${item.gdpUsdT}T</strong>
+                      <em>{item.growthProbability}% {t.growthChance}</em>
+                    </div>
+                  ))}
+                </section>
+              </div>
+            </Panel>
+
+            <Panel icon={<Video size={17} />} title={t.videoAi} view="video" activeView={activeView}>
+              <form className="video-form" onSubmit={analyzeVideo}>
+                <input value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder={t.youtubeUrl} />
+                <label className="file-picker">
+                  <Video size={18} />
+                  <span>{videoData ? "Video ready" : t.uploadVideo}</span>
+                  <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(event) => handleVideoFile(event.target.files?.[0])} />
+                </label>
+                <textarea value={videoQuestion} onChange={(event) => setVideoQuestion(event.target.value)} placeholder={t.videoQuestion} />
+                <button className="wide-button" disabled={busy}><Video size={17} />{t.analyzeVideo}</button>
+              </form>
+            </Panel>
+
+            <Panel icon={<BookOpen size={17} />} title={t.notebook} view="notebook" activeView={activeView}>
+              <div className="notebook-grid">
+                <section className="notebook-column">
+                  <h3>{t.sources}</h3>
+                  <form className="inline-form" onSubmit={addSource}>
+                    <input value={sourceInput} onChange={(event) => setSourceInput(event.target.value)} placeholder={t.addSource} />
+                    <button><Plus size={17} /></button>
+                  </form>
+                  {sources.map((source, index) => <div className="note-chip" key={`${source}-${index}`}>{source}</div>)}
+                </section>
+                <section className="notebook-column">
+                  <h3>{t.studio}</h3>
+                  <div className="studio-grid">
+                    {["Audio Overview", "Video Overview", "Mind Map", "Reports", "Flashcards", "Quiz", "Infographic", "Data Table"].map((item) => (
+                      <button key={item}><Wand2 size={15} />{item}</button>
+                    ))}
+                  </div>
+                </section>
+              </div>
+              <form className="note-form" onSubmit={addNote}>
+                <textarea value={noteInput} onChange={(event) => setNoteInput(event.target.value)} placeholder={t.addNote} />
+                <button className="wide-button"><Plus size={17} />{t.addNote}</button>
+              </form>
+              <div className="notes-list">
+                {notes.map((note, index) => <article className="note-card" key={`${note}-${index}`}>{note}</article>)}
+              </div>
+            </Panel>
+
             <Panel icon={<Play size={17} />} title={t.actionCenter} view="actions" activeView={activeView}>
               <p className="panel-copy">{t.actionCopy}</p>
+              <div className="agent-lab">
+                <h3>{t.automationLab}</h3>
+                <button onClick={() => createAutomationTemplate(t.formAgent, "Open the form, read fields, prepare answers from my profile, ask for approval before submit.")}>
+                  <Wand2 size={15} />{t.formAgent}
+                </button>
+                <button onClick={() => createAutomationTemplate("Message suggestions", "Suggest 3 message options for this person, tone: professional, friendly, concise.")}>
+                  <Mail size={15} />Message suggestions
+                </button>
+                <button onClick={() => createAutomationTemplate("Browser task", "Navigate, collect information, summarize, and ask before final action.")}>
+                  <Globe2 size={15} />Browser task
+                </button>
+              </div>
               <form className="action-form" onSubmit={addAction}>
                 <select value={actionType} onChange={(event) => setActionType(event.target.value as ActionType)}>
                   <option value="message">Message</option>

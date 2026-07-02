@@ -54,6 +54,7 @@ import {
   WifiOff,
   X
 } from "lucide-react";
+import { registerSW } from "virtual:pwa-register";
 import { api } from "./services/api";
 import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
 import { offlineDb, queueSync } from "./services/offlineDb";
@@ -76,6 +77,10 @@ const translations = {
     light: "Claro",
     dark: "Oscuro",
     provider: "Modelo",
+    installApp: "Instalar app",
+    updateReady: "Hay una nueva version disponible.",
+    updateNow: "Actualizar",
+    installHint: "En iOS: Compartir > Agregar a pantalla de inicio.",
     memories: "Memorias",
     openTasks: "Abiertas",
     vision: "Vision",
@@ -193,6 +198,10 @@ const translations = {
     light: "Light",
     dark: "Dark",
     provider: "Model",
+    installApp: "Install app",
+    updateReady: "A new version is available.",
+    updateNow: "Update",
+    installHint: "On iOS: Share > Add to Home Screen.",
     memories: "Memories",
     openTasks: "Open",
     vision: "Vision",
@@ -310,6 +319,10 @@ const translations = {
     light: "Claro",
     dark: "Escuro",
     provider: "Modelo",
+    installApp: "Instalar app",
+    updateReady: "Ha uma nova versao disponivel.",
+    updateNow: "Atualizar",
+    installHint: "No iOS: Compartilhar > Adicionar a tela inicial.",
     memories: "Memorias",
     openTasks: "Abertas",
     vision: "Visao",
@@ -427,6 +440,10 @@ const translations = {
     light: "Clair",
     dark: "Sombre",
     provider: "Modele",
+    installApp: "Installer app",
+    updateReady: "Une nouvelle version est disponible.",
+    updateNow: "Mettre a jour",
+    installHint: "Sur iOS: Partager > Ajouter a l'ecran d'accueil.",
     memories: "Memoires",
     openTasks: "Ouvertes",
     vision: "Vision",
@@ -587,6 +604,10 @@ export function App() {
   const [expandedPanel, setExpandedPanel] = useState<ViewKey | null>(() => (localStorage.getItem("sentinel-expanded-panel") as ViewKey | null) || null);
   const [globeRotation, setGlobeRotation] = useState({ x: 0, y: 0 });
   const [globeDragStart, setGlobeDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [updateReady, setUpdateReady] = useState(false);
+  const [applyUpdate, setApplyUpdate] = useState<(() => Promise<void>) | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [memoryInput, setMemoryInput] = useState("");
   const [taskInput, setTaskInput] = useState("");
@@ -664,6 +685,32 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("sentinel-sidebar-compact", String(sidebarCompact));
   }, [sidebarCompact]);
+
+  useEffect(() => {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setIsStandalone(standalone);
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
+
+  useEffect(() => {
+    const updateServiceWorker = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        setUpdateReady(true);
+        setApplyUpdate(() => () => updateServiceWorker(true));
+      },
+      onOfflineReady() {
+        setOnline(navigator.onLine);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("sentinel-sources", JSON.stringify(sources));
@@ -1106,6 +1153,17 @@ export function App() {
     setGlobeDragStart({ x: clientX, y: clientY });
   }
 
+  async function installApp() {
+    if (!installPrompt) {
+      window.alert(t.installHint);
+      return;
+    }
+
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }
+
   return (
     <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""}`}>
       <aside className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""}`}>
@@ -1191,6 +1249,12 @@ export function App() {
             <p>{t.commandCopy}</p>
           </div>
           <div className="control-cluster">
+            {!isStandalone && (
+              <button className="install-button" onClick={installApp} title={t.installApp}>
+                <Download size={17} />
+                <span>{t.installApp}</span>
+              </button>
+            )}
             <div className={`language-picker ${languageMenuOpen ? "open" : ""}`} title={t.language}>
               <button className="language-trigger" onClick={() => setLanguageMenuOpen((value) => !value)}>
                 <Languages size={17} />
@@ -1232,6 +1296,12 @@ export function App() {
         </header>
 
         {error && <div className="error-banner">{error}</div>}
+        {updateReady && (
+          <div className="pwa-banner">
+            <span>{t.updateReady}</span>
+            <button onClick={() => applyUpdate?.()}>{t.updateNow}</button>
+          </div>
+        )}
         {!online && (
           <div className="offline-banner">
             <WifiOff size={17} />

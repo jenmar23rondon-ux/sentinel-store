@@ -303,7 +303,8 @@ button {
 
 .control-select,
 .language-trigger,
-.theme-toggle {
+.theme-toggle,
+.install-button {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
@@ -321,7 +322,8 @@ button {
 
 .control-select:hover,
 .language-trigger:hover,
-.theme-toggle:hover {
+.theme-toggle:hover,
+.install-button:hover {
   border-color: var(--accent);
   transform: translateY(-2px) scale(1.02);
   box-shadow: var(--shadow);
@@ -329,7 +331,8 @@ button {
 
 .control-select::after,
 .language-trigger::after,
-.theme-toggle::after {
+.theme-toggle::after,
+.install-button::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -340,8 +343,14 @@ button {
 
 .control-select:hover::after,
 .language-trigger:hover::after,
-.theme-toggle:hover::after {
+.theme-toggle:hover::after,
+.install-button:hover::after {
   transform: translateX(120%);
+}
+
+.install-button {
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .language-picker {
@@ -1228,6 +1237,36 @@ textarea:focus {
   border-color: rgba(251, 191, 36, 0.35);
 }
 
+.pwa-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+.pwa-banner button {
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 8px 12px;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.pwa-banner button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
 .career-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1737,7 +1776,8 @@ textarea:focus {
   .control-select,
   .language-picker,
   .language-trigger,
-  .theme-toggle {
+  .theme-toggle,
+  .install-button {
     flex: 1;
     justify-content: center;
   }

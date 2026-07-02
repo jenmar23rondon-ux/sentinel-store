@@ -343,6 +343,24 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
 }
 
 function answerKnownTopic(lower: string) {
+  if (/(lenguajes?|idiomas?)\s+de\s+programaci[oó]n|programming languages|lenguajes?\s+mas\s+usados|lenguajes?\s+m[aá]s\s+usados/i.test(lower)) {
+    return [
+      "Los lenguajes de programacion mas usados suelen variar segun la fuente y el area, pero una lista practica seria:",
+      "",
+      "1. JavaScript / TypeScript: web, frontend, backend con Node.js y apps modernas.",
+      "2. Python: IA, automatizacion, analisis de datos, backend y scripts.",
+      "3. Java: empresas, Android, backend y sistemas grandes.",
+      "4. C#: apps empresariales, videojuegos con Unity y backend .NET.",
+      "5. C / C++: sistemas, rendimiento, drivers, videojuegos y software embebido.",
+      "6. SQL: bases de datos; no siempre se cuenta como lenguaje general, pero es esencial.",
+      "7. Go: APIs, cloud, DevOps y servicios rapidos.",
+      "8. PHP: web y CMS como WordPress, todavia muy usado.",
+      "9. Kotlin / Swift: desarrollo movil Android e iOS.",
+      "10. Rust: sistemas seguros, rendimiento y herramientas modernas.",
+      "",
+      "Para tu objetivo de backend + ciberseguridad, yo priorizaria: TypeScript/Node.js, Python, SQL, Bash, algo de Go y bases de C/C++."
+    ].join("\n");
+  }
   if (/\b(ia|ai|inteligencia artificial|machine learning|aprendizaje automatico)\b/.test(lower)) {
     return [
       "La inteligencia artificial es una forma de hacer que un sistema analice informacion, encuentre patrones y genere respuestas o acciones utiles.",

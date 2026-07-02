@@ -818,7 +818,7 @@ function detectActionIntent(message: string): Omit<ActionItem, "id" | "status" |
   const draft = extractDraft(text);
   const scheduledFor = extractSchedule(text);
 
-  if (/(agenda|agendar|calendario|calendar|programa|programar|schedule)/i.test(lower)) {
+  if (/\b(agenda|agendar|calendario|calendar|programar|schedule)\b/i.test(lower) || /\bprograma\b(?!ci[oó]n)/i.test(lower)) {
     return {
       type: "schedule",
       title: summarizeAction("Agendar", text),

@@ -325,19 +325,70 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
   }
   if (/(qu[eé] es|explica|como|c[oó]mo|ayuda|mejor|plan|recomienda|dime)/i.test(lower)) {
     return [
-      "Te respondo en modo local:",
+      "Te respondo con una guia practica:",
       "",
-      "Puedo ayudarte a organizar ideas, crear planes, convertir mensajes en tareas, generar graficas con tus datos y preparar acciones pendientes. Para preguntas complejas puedo dar una guia practica, y para informacion actual conviene activar busqueda web con SERPER_API_KEY o conectar OpenAI/Gemini/Claude.",
+      "1. Define exactamente que quieres lograr.",
+      "2. Divide el problema en pasos pequenos.",
+      "3. Guarda lo importante como memoria, tarea, nota o grafica.",
+      "4. Revisa el progreso con datos, no solo con sensacion.",
+      "",
+      "En Sentinel puedo ayudarte a convertir tu pregunta en tareas, planes, mensajes, graficas, notas o acciones pendientes. Para informacion actual, intento usar busqueda web desde el backend; para razonamiento mas fuerte, conecta OpenAI, Gemini o Claude.",
       "",
       `Contexto que tengo ahora:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`,
       "",
-      "Si quieres una respuesta mas precisa, dime el objetivo, el tiempo disponible y el resultado que esperas."
+      "Para afinar la respuesta, dime el objetivo, el tiempo disponible y el resultado que quieres obtener."
     ].join("\n");
   }
   return `Estoy listo en modo local. Puedo responder guias practicas, crear tareas, memorias, acciones y graficas. Para respuestas con IA avanzada conecta OPENAI_API_KEY, GEMINI_API_KEY o ANTHROPIC_API_KEY en Railway.\n\nContexto actual:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`;
 }
 
 function answerKnownTopic(lower: string) {
+  if (/\b(ia|ai|inteligencia artificial|machine learning|aprendizaje automatico)\b/.test(lower)) {
+    return [
+      "La inteligencia artificial es una forma de hacer que un sistema analice informacion, encuentre patrones y genere respuestas o acciones utiles.",
+      "",
+      "Ejemplos practicos:",
+      "- Un chat que responde preguntas con tu memoria y tus tareas.",
+      "- Vision AI que analiza capturas, documentos o fotos.",
+      "- Automatizaciones que preparan mensajes, resumen correos o crean graficas.",
+      "",
+      "Para tu Sentinel AI OS, la IA funciona mejor cuando combinas tres cosas: memoria propia, busqueda web para informacion actual y modelos externos como OpenAI, Gemini o Claude."
+    ].join("\n");
+  }
+  if (/\bbackend\b/.test(lower)) {
+    return [
+      "Backend es la parte de una aplicacion que corre en el servidor.",
+      "",
+      "Normalmente se encarga de APIs, autenticacion, base de datos, reglas de negocio, archivos, integraciones y seguridad.",
+      "",
+      "En Sentinel, el backend con Node.js + Express recibe preguntas del chat, consulta memoria/tareas, ejecuta busqueda web y habla con proveedores de IA."
+    ].join("\n");
+  }
+  if (/\bfrontend\b/.test(lower)) {
+    return [
+      "Frontend es la parte visual e interactiva que usa la persona en el navegador o telefono.",
+      "",
+      "En Sentinel es la interfaz React: chat, Notebook, Mundo actual, graficas, panel lateral, tema claro/oscuro, idiomas y modo PWA instalable."
+    ].join("\n");
+  }
+  if (/\b(pwa|progressive web app|android|ios|instalable)\b/.test(lower)) {
+    return "Una PWA es una web que se puede instalar como app, con manifest, service worker, cache offline y actualizaciones. En Android suele instalarse desde Chrome; en iOS desde Safari con Add to Home Screen.";
+  }
+  if (/\b(jwt|token|autenticacion|auth)\b/.test(lower)) {
+    return "JWT es un token firmado que permite autenticar usuarios entre frontend y backend. El frontend lo guarda y lo envia en cada peticion; el backend valida la firma antes de permitir acciones privadas.";
+  }
+  if (/\b(oauth|gmail|google calendar|calendar)\b/.test(lower)) {
+    return "OAuth permite conectar servicios como Gmail o Calendar sin compartir tu contrasena. El usuario autoriza permisos especificos y la app recibe tokens para leer o crear datos segun esos permisos.";
+  }
+  if (/\b(websocket|websockets|tiempo real|realtime)\b/.test(lower)) {
+    return "WebSockets permiten comunicacion en tiempo real entre navegador y servidor. Sirven para chat en vivo, notificaciones, progreso de tareas, subtitulos o actualizaciones instantaneas del dashboard.";
+  }
+  if (/\b(railway|deploy|despliegue|produccion)\b/.test(lower)) {
+    return "Railway despliega tu backend o frontend desde GitHub. Para que Sentinel funcione bien en produccion, configura variables como DATABASE_URL, JWT_SECRET, FRONTEND_URL y las claves de IA que quieras usar.";
+  }
+  if (/\b(github|git|repositorio|commit|push)\b/.test(lower)) {
+    return "GitHub guarda el codigo del proyecto y Git registra cambios. El flujo normal es editar, probar, hacer commit y push para que Railway redepliegue la version nueva.";
+  }
   if (/\bnode(?:\.js| js)?\b/.test(lower)) {
     return [
       "Node.js es un entorno para ejecutar JavaScript fuera del navegador, normalmente en servidores.",

@@ -617,6 +617,7 @@ export function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarTouchStart, setSidebarTouchStart] = useState<number | null>(null);
   const [sidebarCompact, setSidebarCompact] = useState(() => localStorage.getItem("sentinel-sidebar-compact") === "true");
+  const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("sentinel-sidebar-hidden") === "true");
   const [navSettingsOpen, setNavSettingsOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-modules") || "[]"));
@@ -709,6 +710,10 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("sentinel-sidebar-compact", String(sidebarCompact));
   }, [sidebarCompact]);
+
+  useEffect(() => {
+    localStorage.setItem("sentinel-sidebar-hidden", String(sidebarHidden));
+  }, [sidebarHidden]);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
@@ -1218,7 +1223,12 @@ export function App() {
 
   function finishSidebarSwipe(clientX: number) {
     if (sidebarTouchStart === null) return;
-    if (clientX - sidebarTouchStart < -64) setMobileNavOpen(false);
+    const delta = clientX - sidebarTouchStart;
+    if (delta < -64) {
+      if (window.innerWidth <= 1180) setMobileNavOpen(false);
+      else setSidebarHidden(true);
+    }
+    if (delta > 80 && sidebarCompact) setSidebarCompact(false);
     setSidebarTouchStart(null);
   }
 
@@ -1234,9 +1244,9 @@ export function App() {
   }
 
   return (
-    <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""}`}>
+    <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""} ${sidebarHidden ? "sidebar-hidden" : ""}`}>
       <aside
-        className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""}`}
+        className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""} ${sidebarHidden ? "hidden" : ""}`}
         onTouchStart={(event) => setSidebarTouchStart(event.touches[0].clientX)}
         onTouchEnd={(event) => finishSidebarSwipe(event.changedTouches[0].clientX)}
       >
@@ -1250,7 +1260,11 @@ export function App() {
             <h1>Sentinel AI OS</h1>
             <p>{t.subtitle}</p>
           </div>
-          <button className="sidebar-close" onClick={() => setMobileNavOpen(false)} title="Close menu">
+          <button
+            className="sidebar-close"
+            onClick={() => window.innerWidth <= 1180 ? setMobileNavOpen(false) : setSidebarHidden(true)}
+            title="Close menu"
+          >
             <X size={18} />
           </button>
         </div>
@@ -1261,6 +1275,10 @@ export function App() {
             <span>{sidebarCompact ? "Expand" : "Compact"}</span>
           </button>
           <button onClick={() => setNavSettingsOpen((value) => !value)} title="Customize navigation">
+            <Eye size={16} />
+            <span>Items</span>
+          </button>
+          <button onClick={() => setSidebarHidden(true)} title="Hide sidebar">
             <EyeOff size={16} />
             <span>Hide</span>
           </button>
@@ -1314,6 +1332,12 @@ export function App() {
           </div>
         </section>
       </aside>
+      {sidebarHidden && (
+        <button className="sidebar-peek" onClick={() => setSidebarHidden(false)} title="Open sidebar">
+          <Menu size={17} />
+          <span>Menu</span>
+        </button>
+      )}
       {mobileNavOpen && <button className="sidebar-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation" />}
 
       <section className="workspace">

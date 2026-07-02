@@ -105,6 +105,10 @@ button {
   grid-template-columns: 92px minmax(0, 1fr);
 }
 
+.app-shell.sidebar-hidden {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
 .sidebar {
   background: linear-gradient(180deg, var(--sidebar), var(--sidebar-2));
   color: #f5f7f9;
@@ -114,10 +118,17 @@ button {
   gap: 18px;
   border-right: 1px solid var(--sidebar-border);
   transition: width 180ms ease, transform 200ms ease;
+  min-width: 0;
+  will-change: transform;
 }
 
 .sidebar.compact {
   width: 92px;
+}
+
+.sidebar.hidden {
+  transform: translateX(-110%);
+  pointer-events: none;
 }
 
 .sidebar.compact .brand div:last-child,
@@ -156,6 +167,29 @@ button {
 
 .sidebar-scrim {
   display: none;
+}
+
+.sidebar-peek {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  z-index: 28;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  box-shadow: var(--shadow);
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.sidebar-peek:hover {
+  transform: translateX(4px);
+  filter: brightness(1.07);
 }
 
 .brand-mark {
@@ -221,7 +255,7 @@ button {
 
 .nav-tools {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -2102,6 +2136,10 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .app-shell.sidebar-hidden {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -2115,6 +2153,17 @@ textarea:focus {
 
   .sidebar.open {
     transform: translateX(0);
+  }
+
+  .sidebar.hidden {
+    transform: translateX(-105%);
+  }
+
+  .sidebar-peek {
+    top: auto;
+    bottom: 18px;
+    left: 14px;
+    z-index: 35;
   }
 
   .sidebar-close {
@@ -2174,6 +2223,16 @@ textarea:focus {
 }
 
 @media (max-width: 720px) {
+  .sidebar-peek {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+  }
+
+  .sidebar-peek span {
+    display: none;
+  }
+
   .workspace {
     padding: 12px;
   }

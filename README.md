@@ -301,6 +301,10 @@ La interfaz incluye:
 - Animacion de pensamiento con el logo de Sentinel: escudo, ojo y target girando.
 - Selector de idioma custom con animacion, sin dropdown nativo.
 - Sidebar configurable: modo compacto y opcion para ocultar secciones que no uses.
+- Paneles configurables: minimizar, agrandar, mover arriba/abajo y persistir orden.
+- Descarga PDF de reportes como Mundo actual y Estadisticas.
+- Panel de Estadisticas con barras, tablas visuales y probabilidades.
+- Globo interactivo con imagen real de la Tierra y arrastre con mouse/touch.
 - Navegacion por secciones para pantallas pequenas.
 - Tema claro/oscuro persistente.
 - Idiomas `ES`, `EN`, `PT` y `FR`.

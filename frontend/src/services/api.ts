@@ -125,5 +125,15 @@ export const api = {
     request<{ provider: string; content: string }>("/api/video/analyze", {
       method: "POST",
       body: JSON.stringify(input)
-    })
+    }),
+
+  downloadPdf: async (input: { title: string; content: string; rows?: Record<string, string | number | boolean | null>[] }) => {
+    const response = await fetch(`${API_URL}/api/reports/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input)
+    });
+    if (!response.ok) throw new Error("Could not generate PDF");
+    return response.blob();
+  }
 };

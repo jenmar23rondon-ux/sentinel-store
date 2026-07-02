@@ -1,6 +1,9 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Bot,
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
   Bell,
   BookOpen,
   Brain,
@@ -11,6 +14,7 @@ import {
   Circle,
   Clipboard,
   Crosshair,
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -26,6 +30,8 @@ import {
   MapPin,
   Menu,
   Mic,
+  Maximize2,
+  Minimize2,
   Moon,
   Newspaper,
   Play,
@@ -56,7 +62,9 @@ import type { WorldPulse } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
-type ViewKey = "chat" | "world" | "video" | "notebook" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
+type ViewKey = "chat" | "world" | "analytics" | "video" | "notebook" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
+
+const defaultPanelOrder: ViewKey[] = ["world", "notebook", "analytics", "video", "actions", "career", "activity", "memory", "tasks", "search", "vision", "modules"];
 
 const translations = {
   es: {
@@ -78,7 +86,15 @@ const translations = {
     pending: "pendiente",
     modules: "Modulos",
     world: "Mundo",
-    worldPulse: "Pulso mundial",
+    worldPulse: "Mundo actual",
+    analytics: "Estadísticas",
+    downloadPdf: "Descargar PDF",
+    minimize: "Minimizar",
+    expand: "Agrandar",
+    moveUp: "Subir",
+    moveDown: "Bajar",
+    charts: "Gráficos",
+    probability: "Probabilidad",
     videoAi: "Video AI",
     notebook: "Notebook",
     automationLab: "Agent Lab",
@@ -187,7 +203,15 @@ const translations = {
     pending: "pending",
     modules: "Modules",
     world: "World",
-    worldPulse: "World Pulse",
+    worldPulse: "Current World",
+    analytics: "Statistics",
+    downloadPdf: "Download PDF",
+    minimize: "Minimize",
+    expand: "Expand",
+    moveUp: "Move up",
+    moveDown: "Move down",
+    charts: "Charts",
+    probability: "Probability",
     videoAi: "Video AI",
     notebook: "Notebook",
     automationLab: "Agent Lab",
@@ -296,7 +320,15 @@ const translations = {
     pending: "pendente",
     modules: "Modulos",
     world: "Mundo",
-    worldPulse: "Pulso mundial",
+    worldPulse: "Mundo atual",
+    analytics: "Estatísticas",
+    downloadPdf: "Baixar PDF",
+    minimize: "Minimizar",
+    expand: "Aumentar",
+    moveUp: "Subir",
+    moveDown: "Descer",
+    charts: "Graficos",
+    probability: "Probabilidade",
     videoAi: "Video AI",
     notebook: "Notebook",
     automationLab: "Agent Lab",
@@ -405,7 +437,15 @@ const translations = {
     pending: "en attente",
     modules: "Modules",
     world: "Monde",
-    worldPulse: "Pouls mondial",
+    worldPulse: "Monde actuel",
+    analytics: "Statistiques",
+    downloadPdf: "Telecharger PDF",
+    minimize: "Minimiser",
+    expand: "Agrandir",
+    moveUp: "Monter",
+    moveDown: "Descendre",
+    charts: "Graphiques",
+    probability: "Probabilite",
     videoAi: "Video AI",
     notebook: "Notebook",
     automationLab: "Agent Lab",
@@ -542,6 +582,11 @@ export function App() {
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-modules") || "[]"));
   const [hiddenNavItems, setHiddenNavItems] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-hidden-nav") || "[]"));
+  const [panelOrder, setPanelOrder] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-panel-order") || JSON.stringify(defaultPanelOrder)));
+  const [collapsedPanels, setCollapsedPanels] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-collapsed-panels") || "[]"));
+  const [expandedPanel, setExpandedPanel] = useState<ViewKey | null>(() => (localStorage.getItem("sentinel-expanded-panel") as ViewKey | null) || null);
+  const [globeRotation, setGlobeRotation] = useState({ x: 0, y: 0 });
+  const [globeDragStart, setGlobeDragStart] = useState<{ x: number; y: number } | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [memoryInput, setMemoryInput] = useState("");
   const [taskInput, setTaskInput] = useState("");
@@ -602,6 +647,19 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("sentinel-hidden-nav", JSON.stringify(hiddenNavItems));
   }, [hiddenNavItems]);
+
+  useEffect(() => {
+    localStorage.setItem("sentinel-panel-order", JSON.stringify(panelOrder));
+  }, [panelOrder]);
+
+  useEffect(() => {
+    localStorage.setItem("sentinel-collapsed-panels", JSON.stringify(collapsedPanels));
+  }, [collapsedPanels]);
+
+  useEffect(() => {
+    if (expandedPanel) localStorage.setItem("sentinel-expanded-panel", expandedPanel);
+    else localStorage.removeItem("sentinel-expanded-panel");
+  }, [expandedPanel]);
 
   useEffect(() => {
     localStorage.setItem("sentinel-sidebar-compact", String(sidebarCompact));
@@ -687,6 +745,7 @@ export function App() {
   const navItems: { key: ViewKey; label: string; icon: ReactNode }[] = [
     { key: "chat", label: t.chat, icon: <Bot size={17} /> },
     { key: "world", label: t.world, icon: <Globe2 size={17} /> },
+    { key: "analytics", label: t.analytics, icon: <BarChart3 size={17} /> },
     { key: "video", label: t.videoAi, icon: <Video size={17} /> },
     { key: "notebook", label: t.notebook, icon: <BookOpen size={17} /> },
     { key: "actions", label: t.actions, icon: <Play size={17} /> },
@@ -996,6 +1055,57 @@ export function App() {
     setHiddenNavItems((current) => current.includes(view) ? current.filter((item) => item !== view) : [...current, view]);
   }
 
+  function movePanel(view: ViewKey, direction: -1 | 1) {
+    setPanelOrder((current) => {
+      const next = [...new Set([...current, ...defaultPanelOrder])];
+      const index = next.indexOf(view);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  function togglePanelCollapse(view: ViewKey) {
+    setCollapsedPanels((current) => current.includes(view) ? current.filter((item) => item !== view) : [...current, view]);
+  }
+
+  function panelProps(view: ViewKey) {
+    return {
+      order: panelOrder.indexOf(view) === -1 ? defaultPanelOrder.indexOf(view) : panelOrder.indexOf(view),
+      collapsed: collapsedPanels.includes(view),
+      expanded: expandedPanel === view,
+      labels: { minimize: t.minimize, expand: t.expand, moveUp: t.moveUp, moveDown: t.moveDown },
+      onMoveUp: () => movePanel(view, -1),
+      onMoveDown: () => movePanel(view, 1),
+      onToggleCollapse: () => togglePanelCollapse(view),
+      onToggleExpand: () => setExpandedPanel((current) => current === view ? null : view)
+    };
+  }
+
+  async function downloadPdf(title: string, content: string, rows?: Record<string, string | number | boolean | null>[]) {
+    const blob = await api.downloadPdf({ title, content, rows });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function startGlobeDrag(clientX: number, clientY: number) {
+    setGlobeDragStart({ x: clientX, y: clientY });
+  }
+
+  function moveGlobe(clientX: number, clientY: number) {
+    if (!globeDragStart) return;
+    setGlobeRotation((current) => ({
+      x: Math.max(-35, Math.min(35, current.x + (clientY - globeDragStart.y) * 0.12)),
+      y: current.y + (clientX - globeDragStart.x) * 0.18
+    }));
+    setGlobeDragStart({ x: clientX, y: clientY });
+  }
+
   return (
     <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""}`}>
       <aside className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""}`}>
@@ -1177,10 +1287,20 @@ export function App() {
           </section>
 
           <aside className="right-rail">
-            <Panel icon={<Globe2 size={17} />} title={t.worldPulse} view="world" activeView={activeView}>
+            <Panel icon={<Globe2 size={17} />} title={t.worldPulse} view="world" activeView={activeView} {...panelProps("world")}>
               <div className="world-layout">
                 <div className="globe-card">
-                  <div className="globe">
+                  <div
+                    className="globe"
+                    style={{ "--globe-rotate-x": `${globeRotation.x}deg`, "--globe-rotate-y": `${globeRotation.y}deg` } as CSSProperties}
+                    onMouseDown={(event) => startGlobeDrag(event.clientX, event.clientY)}
+                    onMouseMove={(event) => moveGlobe(event.clientX, event.clientY)}
+                    onMouseUp={() => setGlobeDragStart(null)}
+                    onMouseLeave={() => setGlobeDragStart(null)}
+                    onTouchStart={(event) => startGlobeDrag(event.touches[0].clientX, event.touches[0].clientY)}
+                    onTouchMove={(event) => moveGlobe(event.touches[0].clientX, event.touches[0].clientY)}
+                    onTouchEnd={() => setGlobeDragStart(null)}
+                  >
                     {worldPulse?.news.map((item, index) => (
                       <span
                         className={`map-pin impact-${item.impact}`}
@@ -1237,9 +1357,65 @@ export function App() {
                   ))}
                 </section>
               </div>
+              <button
+                className="wide-button"
+                onClick={() => downloadPdf(
+                  t.worldPulse,
+                  [
+                    "Top news:",
+                    ...(worldPulse?.news.map((item) => `${item.country} - ${item.city}: ${item.title}`) ?? []),
+                    "",
+                    `Gold: ${worldPulse?.gold.value ?? "n/a"}`,
+                    `Bitcoin: ${worldPulse?.bitcoin?.value ?? "n/a"}`
+                  ].join("\n"),
+                  worldPulse?.economies.map((item) => ({ rank: item.rank, country: item.country, gdpUsdT: item.gdpUsdT, growthProbability: item.growthProbability }))
+                )}
+              >
+                <Download size={17} />{t.downloadPdf}
+              </button>
             </Panel>
 
-            <Panel icon={<Video size={17} />} title={t.videoAi} view="video" activeView={activeView}>
+            <Panel icon={<BarChart3 size={17} />} title={t.analytics} view="analytics" activeView={activeView} {...panelProps("analytics")}>
+              <div className="analytics-grid">
+                <div className="stat-card">
+                  <span>{t.totalApplications}</span>
+                  <strong>{career.length}</strong>
+                  <div className="mini-bar"><i style={{ width: `${Math.min(100, career.length * 8)}%` }} /></div>
+                </div>
+                <div className="stat-card">
+                  <span>{t.responseRate}</span>
+                  <strong>{careerResponseRate(career)}%</strong>
+                  <div className="mini-bar"><i style={{ width: `${careerResponseRate(career)}%` }} /></div>
+                </div>
+                <div className="stat-card">
+                  <span>{t.probability}</span>
+                  <strong>{Math.round(((worldPulse?.economies.find((item) => item.country === "Colombia")?.growthProbability ?? 62) + careerResponseRate(career)) / 2)}%</strong>
+                  <div className="mini-bar"><i style={{ width: `${Math.round(((worldPulse?.economies.find((item) => item.country === "Colombia")?.growthProbability ?? 62) + careerResponseRate(career)) / 2)}%` }} /></div>
+                </div>
+              </div>
+              <div className="chart-panel">
+                <h3>{t.charts}</h3>
+                {worldPulse?.economies.slice(0, 8).map((item) => (
+                  <div className="chart-row" key={item.country}>
+                    <span>{item.country}</span>
+                    <div><i style={{ width: `${item.growthProbability}%` }} /></div>
+                    <strong>{item.growthProbability}%</strong>
+                  </div>
+                ))}
+              </div>
+              <button
+                className="wide-button"
+                onClick={() => downloadPdf(
+                  t.analytics,
+                  `Applications: ${career.length}\nResponse rate: ${careerResponseRate(career)}%\nInterviews: ${career.filter((item) => item.status === "interview").length}`,
+                  career.map((item) => ({ company: item.company, role: item.role, status: item.status, date: item.date }))
+                )}
+              >
+                <Download size={17} />{t.downloadPdf}
+              </button>
+            </Panel>
+
+            <Panel icon={<Video size={17} />} title={t.videoAi} view="video" activeView={activeView} {...panelProps("video")}>
               <form className="video-form" onSubmit={analyzeVideo}>
                 <input value={youtubeUrl} onChange={(event) => setYoutubeUrl(event.target.value)} placeholder={t.youtubeUrl} />
                 <label className="file-picker">
@@ -1252,7 +1428,7 @@ export function App() {
               </form>
             </Panel>
 
-            <Panel icon={<BookOpen size={17} />} title={t.notebook} view="notebook" activeView={activeView}>
+            <Panel icon={<BookOpen size={17} />} title={t.notebook} view="notebook" activeView={activeView} {...panelProps("notebook")}>
               <div className="notebook-grid">
                 <section className="notebook-column">
                   <h3>{t.sources}</h3>
@@ -1280,7 +1456,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<Play size={17} />} title={t.actionCenter} view="actions" activeView={activeView}>
+            <Panel icon={<Play size={17} />} title={t.actionCenter} view="actions" activeView={activeView} {...panelProps("actions")}>
               <p className="panel-copy">{t.actionCopy}</p>
               <div className="agent-lab">
                 <h3>{t.automationLab}</h3>
@@ -1331,7 +1507,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<BriefcaseBusiness size={17} />} title={t.career} view="career" activeView={activeView}>
+            <Panel icon={<BriefcaseBusiness size={17} />} title={t.career} view="career" activeView={activeView} {...panelProps("career")}>
               <div className="career-stats">
                 <Metric icon={<BriefcaseBusiness size={16} />} label={t.totalApplications} value={career.length} />
                 <Metric icon={<Mail size={16} />} label={t.responseRate} value={careerResponseRate(career)} />
@@ -1373,7 +1549,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<MapPin size={17} />} title={t.activity} view="activity" activeView={activeView}>
+            <Panel icon={<MapPin size={17} />} title={t.activity} view="activity" activeView={activeView} {...panelProps("activity")}>
               <div className="activity-actions">
                 <button onClick={addCurrentLocation}><MapPin size={16} />{t.gps}</button>
                 <button onClick={addAppUsage}><Smartphone size={16} />{t.appUsage}</button>
@@ -1394,7 +1570,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<Brain size={17} />} title={t.memory} view="memory" activeView={activeView}>
+            <Panel icon={<Brain size={17} />} title={t.memory} view="memory" activeView={activeView} {...panelProps("memory")}>
               <form className="inline-form" onSubmit={addMemory}>
                 <input value={memoryInput} onChange={(event) => setMemoryInput(event.target.value)} placeholder={t.importantData} />
                 <button title={t.saveMemory}><Plus size={17} /></button>
@@ -1409,7 +1585,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<CheckCircle2 size={17} />} title={t.tasks} view="tasks" activeView={activeView}>
+            <Panel icon={<CheckCircle2 size={17} />} title={t.tasks} view="tasks" activeView={activeView} {...panelProps("tasks")}>
               <form className="task-form" onSubmit={addTask}>
                 <input value={taskInput} onChange={(event) => setTaskInput(event.target.value)} placeholder={t.newTask} />
                 <select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value as TaskItem["priority"])}>
@@ -1433,7 +1609,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<Globe2 size={17} />} title={t.internet} view="search" activeView={activeView}>
+            <Panel icon={<Globe2 size={17} />} title={t.internet} view="search" activeView={activeView} {...panelProps("search")}>
               <form className="inline-form" onSubmit={runSearch}>
                 <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder={t.searchWeb} />
                 <button title={t.searchWeb}><Search size={17} /></button>
@@ -1448,7 +1624,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<ImagePlus size={17} />} title={t.visionAI} view="vision" activeView={activeView}>
+            <Panel icon={<ImagePlus size={17} />} title={t.visionAI} view="vision" activeView={activeView} {...panelProps("vision")}>
               <form className="vision-form" onSubmit={analyzeVision}>
                 <label className="file-picker">
                   <ImagePlus size={18} />
@@ -1476,7 +1652,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel icon={<Target size={17} />} title={t.modules} view="modules" activeView={activeView}>
+            <Panel icon={<Target size={17} />} title={t.modules} view="modules" activeView={activeView} {...panelProps("modules")}>
               <div className="module-grid">
                 {moduleCatalog.map((item) => {
                   const Icon = item.icon;
@@ -1507,14 +1683,50 @@ export function App() {
   );
 }
 
-function Panel({ icon, title, children, view, activeView }: { icon: ReactNode; title: string; children: ReactNode; view: ViewKey; activeView: ViewKey }) {
+function Panel({
+  icon,
+  title,
+  children,
+  view,
+  activeView,
+  order,
+  collapsed,
+  expanded,
+  labels,
+  onMoveUp,
+  onMoveDown,
+  onToggleCollapse,
+  onToggleExpand
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+  view: ViewKey;
+  activeView: ViewKey;
+  order: number;
+  collapsed: boolean;
+  expanded: boolean;
+  labels: { minimize: string; expand: string; moveUp: string; moveDown: string };
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onToggleCollapse: () => void;
+  onToggleExpand: () => void;
+}) {
   return (
-    <section className={`panel view-panel ${activeView === view ? "active-view" : ""}`}>
+    <section className={`panel view-panel ${activeView === view ? "active-view" : ""} ${collapsed ? "collapsed" : ""} ${expanded ? "expanded" : ""}`} style={{ order }}>
       <div className="panel-title">
-        {icon}
-        <h2>{title}</h2>
+        <span className="panel-heading">
+          {icon}
+          <h2>{title}</h2>
+        </span>
+        <div className="panel-controls">
+          <button onClick={onMoveUp} title={labels.moveUp}><ArrowUp size={14} /></button>
+          <button onClick={onMoveDown} title={labels.moveDown}><ArrowDown size={14} /></button>
+          <button onClick={onToggleCollapse} title={labels.minimize}>{collapsed ? <Maximize2 size={14} /> : <Minimize2 size={14} />}</button>
+          <button onClick={onToggleExpand} title={labels.expand}>{expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
+        </div>
       </div>
-      {children}
+      <div className="panel-body">{children}</div>
     </section>
   );
 }

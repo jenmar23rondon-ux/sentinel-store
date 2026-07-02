@@ -68,3 +68,42 @@ export interface ActionItem {
   createdAt: string;
   updatedAt: string;
 }
+
+export type JobStatus = "applied" | "screening" | "interview" | "offer" | "rejected";
+
+export interface JobApplication {
+  id: string;
+  company: string;
+  role: string;
+  date: string;
+  url?: string;
+  status: JobStatus;
+  notes?: string;
+  recruiterName?: string;
+  recruiterEmail?: string;
+  salaryExpectation?: string;
+  nextActionReminder?: string;
+  synced?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: "location" | "app_usage" | "notification" | "activity";
+  title: string;
+  detail?: string;
+  latitude?: number;
+  longitude?: number;
+  durationMinutes?: number;
+  appName?: string;
+  occurredAt: string;
+  createdAt: string;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  activityAlerts: boolean;
+  careerReminders: boolean;
+  locationInsights: boolean;
+}

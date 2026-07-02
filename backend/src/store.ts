@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import { env } from "./env.js";
-import type { ActionItem, Conversation, MemoryItem, Message, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
+import type { ActionItem, ActivityEvent, Conversation, JobApplication, MemoryItem, Message, NotificationSettings, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
 
 const initialStore: Store = {
   conversations: [],
@@ -11,6 +11,14 @@ const initialStore: Store = {
   tasks: [],
   vision: [],
   actions: [],
+  career: [],
+  activity: [],
+  notificationSettings: {
+    enabled: true,
+    activityAlerts: true,
+    careerReminders: true,
+    locationInsights: true
+  },
   toolCalls: []
 };
 
@@ -31,6 +39,9 @@ async function ensureStore(): Promise<Store> {
     cache.tasks ??= [];
     cache.vision ??= [];
     cache.actions ??= [];
+    cache.career ??= [];
+    cache.activity ??= [];
+    cache.notificationSettings ??= structuredClone(initialStore.notificationSettings);
     cache.toolCalls ??= [];
   } catch {
     cache = structuredClone(initialStore);
@@ -185,6 +196,55 @@ export const db = {
     const store = await ensureStore();
     store.actions = store.actions.filter((item) => item.id !== id);
     await persist();
+  },
+
+  async createJobApplication(input: Omit<JobApplication, "id" | "createdAt" | "updatedAt" | "synced"> & { id?: string; synced?: boolean }) {
+    const store = await ensureStore();
+    const now = new Date().toISOString();
+    const item: JobApplication = {
+      ...input,
+      id: input.id ?? nanoid(),
+      synced: input.synced ?? true,
+      createdAt: now,
+      updatedAt: now
+    };
+    store.career.unshift(item);
+    await persist();
+    return item;
+  },
+
+  async updateJobApplication(id: string, patch: Partial<JobApplication>) {
+    const store = await ensureStore();
+    const item = store.career.find((entry) => entry.id === id);
+    if (!item) return null;
+    Object.assign(item, patch, { updatedAt: new Date().toISOString(), synced: true });
+    await persist();
+    return item;
+  },
+
+  async deleteJobApplication(id: string) {
+    const store = await ensureStore();
+    store.career = store.career.filter((item) => item.id !== id);
+    await persist();
+  },
+
+  async addActivity(input: Omit<ActivityEvent, "id" | "createdAt">) {
+    const store = await ensureStore();
+    const item: ActivityEvent = {
+      ...input,
+      id: nanoid(),
+      createdAt: new Date().toISOString()
+    };
+    store.activity.unshift(item);
+    await persist();
+    return item;
+  },
+
+  async updateNotificationSettings(patch: Partial<NotificationSettings>) {
+    const store = await ensureStore();
+    store.notificationSettings = { ...store.notificationSettings, ...patch };
+    await persist();
+    return store.notificationSettings;
   },
 
   async addToolCall(call: Omit<ToolCall, "id" | "createdAt">) {

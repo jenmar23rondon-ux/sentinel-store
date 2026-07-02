@@ -20,6 +20,13 @@ Este repositorio ya incluye un MVP funcional:
 - Modulos interactivos para activar ideas del segundo cerebro y convertirlas en tareas.
 - Action Center para preparar agendas, mensajes, correos, recordatorios y automatizaciones.
 - Deteccion inicial de intenciones desde el chat: si pides agendar o enviar algo, Sentinel crea una accion pendiente.
+- Career Dashboard con aplicaciones, estados, recruiters, salario esperado, recordatorios y asistente IA.
+- Soporte offline con PWA + Workbox + IndexedDB/Dexie.
+- Sync offline/online para Career Tracker.
+- WebSockets para refrescar eventos de carrera, actividad y notificaciones en tiempo real.
+- Activity Tracker inicial para GPS autorizado, tiempo en apps registrado manualmente y eventos.
+- Toggle para apagar/encender notificaciones.
+- Migracion PostgreSQL y script JSON -> PostgreSQL.
 - Manifest PWA para usarlo desde Chrome como app instalada.
 - Dashboard web en React.
 - Backend en Node.js + TypeScript.
@@ -72,6 +79,24 @@ Build:
 
 ```bash
 npm run build
+```
+
+## PostgreSQL
+
+El MVP sigue funcionando con JSON local para desarrollo rapido, pero ya incluye migracion PostgreSQL.
+
+1. Crea una base de datos PostgreSQL.
+2. Configura `DATABASE_URL` en `backend/.env`.
+3. Ejecuta el SQL:
+
+```bash
+psql "$DATABASE_URL" -f backend/migrations/001_initial_postgres.sql
+```
+
+4. Migra datos JSON existentes a PostgreSQL:
+
+```bash
+npm run db:migrate-json --workspace backend
 ```
 
 ## Configuracion
@@ -151,6 +176,53 @@ Recuérdame estudiar Docker manana
 ```
 
 Por seguridad, Sentinel no envia mensajes ni correos sin aprobacion. Primero crea una accion pendiente. Cuando se conecten Gmail, Calendar, WhatsApp, Telegram o Microsoft mediante APIs oficiales/OAuth, esas acciones podran ejecutarse desde el mismo panel.
+
+### Career Dashboard
+
+Permite registrar vacantes:
+
+- Empresa.
+- Rol.
+- Fecha.
+- URL.
+- Estado: `applied`, `screening`, `interview`, `offer`, `rejected`.
+- Notas.
+- Recruiter.
+- Salario esperado.
+- Proxima accion.
+
+Incluye estadisticas de aplicaciones, tasa de respuesta, entrevistas y aplicaciones por semana. Tambien tiene prompts IA como:
+
+```text
+Prepare me for my interview with [company]
+Write a cover letter for [role]
+What questions will they ask at [company]?
+```
+
+### Offline/PWA
+
+La app usa Workbox para cachear assets y respuestas API, e IndexedDB con Dexie para guardar datos locales.
+
+Estrategia:
+
+```text
+Online  -> backend + IndexedDB
+Offline -> IndexedDB
+Online de nuevo -> sync al backend
+```
+
+Actualmente el sync offline esta implementado para Career Tracker y la cache local cubre tareas e historial de chat.
+
+### Activity Tracker
+
+Incluye una base para:
+
+- GPS/check-ins con permiso del navegador.
+- Tiempo en apps registrado manualmente.
+- Historial de actividades.
+- Configuracion para apagar/encender notificaciones.
+
+Limitacion importante: una PWA en Android no puede leer automaticamente todo el uso de otras apps sin permisos nativos. Para tracking automatico real se necesita una app Android/React Native con permisos de Usage Access, notificaciones y ubicacion.
 
 ### Web Search
 

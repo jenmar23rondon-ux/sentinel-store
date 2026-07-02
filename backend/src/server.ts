@@ -1,8 +1,10 @@
 import cors from "cors";
 import express from "express";
 import fs from "node:fs/promises";
+import http from "node:http";
 import path from "node:path";
 import { nanoid } from "nanoid";
+import { WebSocketServer } from "ws";
 import { z } from "zod";
 import { env } from "./env.js";
 import { analyzeImage, generateAssistantReply, providerStatus } from "./providers.js";
@@ -28,6 +30,9 @@ app.get("/api/bootstrap", async (_req, res) => {
     tasks: store.tasks,
     vision: store.vision,
     actions: store.actions,
+    career: store.career,
+    activity: store.activity,
+    notificationSettings: store.notificationSettings,
     providers: providerStatus(),
     integrations: integrationStatus()
   });
@@ -227,6 +232,97 @@ app.delete("/api/actions/:id", async (req, res) => {
   res.status(204).send();
 });
 
+app.get("/api/career/applications", async (_req, res) => {
+  res.json((await db.snapshot()).career);
+});
+
+app.post("/api/career/applications", async (req, res, next) => {
+  try {
+    const body = jobApplicationSchema.parse(req.body);
+    const item = await db.createJobApplication({ ...body, synced: true });
+    broadcast({ type: "career:created", payload: item });
+    res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/career/sync", async (req, res, next) => {
+  try {
+    const body = z.object({ applications: z.array(jobApplicationSchema.extend({ id: z.string().optional() })) }).parse(req.body);
+    const saved = [];
+    for (const application of body.applications) {
+      const existing = (await db.snapshot()).career.find((item) => item.id === application.id);
+      if (existing && application.id) {
+        saved.push(await db.updateJobApplication(application.id, application));
+      } else {
+        saved.push(await db.createJobApplication({ ...application, synced: true }));
+      }
+    }
+    broadcast({ type: "career:synced", payload: saved });
+    res.json(saved);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/career/applications/:id", async (req, res) => {
+  const item = await db.updateJobApplication(req.params.id, req.body);
+  if (!item) return res.status(404).json({ error: "Application not found" });
+  broadcast({ type: "career:updated", payload: item });
+  res.json(item);
+});
+
+app.delete("/api/career/applications/:id", async (req, res) => {
+  await db.deleteJobApplication(req.params.id);
+  broadcast({ type: "career:deleted", payload: { id: req.params.id } });
+  res.status(204).send();
+});
+
+app.post("/api/career/ai", async (req, res, next) => {
+  try {
+    const body = z.object({
+      prompt: z.string().min(2),
+      provider: z.enum(["auto", "openai", "claude", "gemini", "ollama", "local"]).default("auto")
+    }).parse(req.body);
+    const store = await db.snapshot();
+    const careerContext = store.career.slice(0, 8).map((item) => `${item.company} - ${item.role} (${item.status})`).join("\n");
+    const reply = await generateAssistantReply({
+      provider: body.provider as ProviderName,
+      messages: [{ role: "user", content: `${body.prompt}\n\nCareer tracker:\n${careerContext}` }],
+      memoryContext: store.memory.map((item) => `- ${item.content}`).join("\n"),
+      taskContext: store.tasks.filter((item) => item.status === "open").map((item) => `- ${item.title}`).join("\n")
+    });
+    res.json(reply);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/activity", async (_req, res) => {
+  res.json({
+    activity: (await db.snapshot()).activity,
+    notificationSettings: (await db.snapshot()).notificationSettings
+  });
+});
+
+app.post("/api/activity", async (req, res, next) => {
+  try {
+    const body = activitySchema.parse(req.body);
+    const item = await db.addActivity(body);
+    broadcast({ type: "activity:created", payload: item });
+    res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/notifications/settings", async (req, res) => {
+  const settings = await db.updateNotificationSettings(req.body);
+  broadcast({ type: "notifications:settings", payload: settings });
+  res.json(settings);
+});
+
 app.get("/api/integrations", (_req, res) => {
   res.json(integrationStatus());
 });
@@ -236,9 +332,23 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   res.status(400).json({ error: message });
 });
 
-app.listen(env.port, () => {
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: "/ws" });
+
+wss.on("connection", (socket) => {
+  socket.send(JSON.stringify({ type: "connected", payload: { time: new Date().toISOString() } }));
+});
+
+server.listen(env.port, () => {
   console.log(`Sentinel AI backend running on http://localhost:${env.port}`);
 });
+
+function broadcast(message: unknown) {
+  const raw = JSON.stringify(message);
+  for (const client of wss.clients) {
+    if (client.readyState === client.OPEN) client.send(raw);
+  }
+}
 
 function integrationStatus() {
   return {
@@ -269,6 +379,30 @@ const actionSchema = z.object({
   target: z.string().optional(),
   draft: z.string().optional(),
   scheduledFor: z.string().optional()
+});
+
+const jobApplicationSchema = z.object({
+  company: z.string().min(1),
+  role: z.string().min(1),
+  date: z.string().min(1),
+  url: z.string().optional(),
+  status: z.enum(["applied", "screening", "interview", "offer", "rejected"]).default("applied"),
+  notes: z.string().optional(),
+  recruiterName: z.string().optional(),
+  recruiterEmail: z.string().optional(),
+  salaryExpectation: z.string().optional(),
+  nextActionReminder: z.string().optional()
+});
+
+const activitySchema = z.object({
+  type: z.enum(["location", "app_usage", "notification", "activity"]),
+  title: z.string().min(1),
+  detail: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  durationMinutes: z.number().optional(),
+  appName: z.string().optional(),
+  occurredAt: z.string().default(() => new Date().toISOString())
 });
 
 async function autoCaptureMemory(message: string) {

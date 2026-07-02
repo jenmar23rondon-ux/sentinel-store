@@ -1,4 +1,4 @@
-import type { ActionItem, ActionType, MemoryItem, Message, ProviderName, SearchResult, TaskItem, VisionItem } from "../types";
+import type { ActionItem, ActionType, ActivityEvent, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
 
@@ -26,6 +26,9 @@ export const api = {
     tasks: TaskItem[];
     vision: VisionItem[];
     actions: ActionItem[];
+    career: JobApplication[];
+    activity: ActivityEvent[];
+    notificationSettings: NotificationSettings;
     providers: Record<string, boolean>;
     integrations: Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>;
   }>("/api/bootstrap"),
@@ -85,4 +88,34 @@ export const api = {
     }),
 
   deleteAction: (id: string) => request<void>(`/api/actions/${id}`, { method: "DELETE" })
+  ,
+  addCareerApplication: (input: Omit<JobApplication, "id" | "createdAt" | "updatedAt" | "synced">) =>
+    request<JobApplication>("/api/career/applications", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }),
+
+  syncCareer: (applications: JobApplication[]) =>
+    request<JobApplication[]>("/api/career/sync", {
+      method: "POST",
+      body: JSON.stringify({ applications })
+    }),
+
+  careerAi: (prompt: string, provider: ProviderName) =>
+    request<{ provider: string; content: string }>("/api/career/ai", {
+      method: "POST",
+      body: JSON.stringify({ prompt, provider })
+    }),
+
+  addActivity: (input: Omit<ActivityEvent, "id" | "createdAt">) =>
+    request<ActivityEvent>("/api/activity", {
+      method: "POST",
+      body: JSON.stringify(input)
+    }),
+
+  updateNotificationSettings: (patch: Partial<NotificationSettings>) =>
+    request<NotificationSettings>("/api/notifications/settings", {
+      method: "PATCH",
+      body: JSON.stringify(patch)
+    })
 };

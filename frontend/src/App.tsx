@@ -1,6 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Bot,
+  Bell,
   Brain,
   BriefcaseBusiness,
   CalendarDays,
@@ -19,6 +20,7 @@ import {
   Languages,
   Loader2,
   Mail,
+  MapPin,
   Menu,
   Mic,
   Moon,
@@ -37,14 +39,17 @@ import {
   ThumbsUp,
   Trash2,
   WalletCards,
+  WifiOff,
   X
 } from "lucide-react";
 import { api } from "./services/api";
-import type { ActionItem, ActionStatus, ActionType, MemoryItem, Message, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
+import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
+import { offlineDb, queueSync } from "./services/offlineDb";
+import type { ActionItem, ActionStatus, ActionType, ActivityEvent, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
-type ViewKey = "chat" | "actions" | "tasks" | "memory" | "vision" | "search" | "modules";
+type ViewKey = "chat" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
 
 const translations = {
   es: {
@@ -66,6 +71,27 @@ const translations = {
     pending: "pendiente",
     modules: "Modulos",
     actions: "Acciones",
+    career: "Carrera",
+    activity: "Actividad",
+    offline: "Estas offline - los cambios se sincronizaran cuando vuelvas a conectarte.",
+    notifications: "Notificaciones",
+    gps: "GPS y tiempo",
+    appUsage: "Apps",
+    disableNotifications: "Apagar notificaciones",
+    enableNotifications: "Encender notificaciones",
+    addApplication: "Agregar vacante",
+    company: "Empresa",
+    role: "Rol",
+    url: "URL",
+    notes: "Notas",
+    recruiter: "Recruiter",
+    salary: "Salario esperado",
+    nextAction: "Proxima accion",
+    responseRate: "Respuesta",
+    interviews: "Entrevistas",
+    totalApplications: "Aplicaciones",
+    applicationsWeek: "Esta semana",
+    careerAi: "IA de carrera",
     actionCenter: "Action Center",
     actionCopy: "Prepara agendas, mensajes, correos y automatizaciones con aprobacion antes de ejecutar.",
     approve: "Aprobar",
@@ -137,6 +163,27 @@ const translations = {
     pending: "pending",
     modules: "Modules",
     actions: "Actions",
+    career: "Career",
+    activity: "Activity",
+    offline: "You're offline - changes will sync when connected.",
+    notifications: "Notifications",
+    gps: "GPS and time",
+    appUsage: "Apps",
+    disableNotifications: "Disable notifications",
+    enableNotifications: "Enable notifications",
+    addApplication: "Add application",
+    company: "Company",
+    role: "Role",
+    url: "URL",
+    notes: "Notes",
+    recruiter: "Recruiter",
+    salary: "Salary expectation",
+    nextAction: "Next action",
+    responseRate: "Response",
+    interviews: "Interviews",
+    totalApplications: "Applications",
+    applicationsWeek: "This week",
+    careerAi: "Career AI",
     actionCenter: "Action Center",
     actionCopy: "Prepare schedules, messages, emails and automations with approval before execution.",
     approve: "Approve",
@@ -208,6 +255,27 @@ const translations = {
     pending: "pendente",
     modules: "Modulos",
     actions: "Acoes",
+    career: "Carreira",
+    activity: "Atividade",
+    offline: "Voce esta offline - as alteracoes serao sincronizadas quando voltar.",
+    notifications: "Notificacoes",
+    gps: "GPS e tempo",
+    appUsage: "Apps",
+    disableNotifications: "Desativar notificacoes",
+    enableNotifications: "Ativar notificacoes",
+    addApplication: "Adicionar vaga",
+    company: "Empresa",
+    role: "Cargo",
+    url: "URL",
+    notes: "Notas",
+    recruiter: "Recruiter",
+    salary: "Salario esperado",
+    nextAction: "Proxima acao",
+    responseRate: "Resposta",
+    interviews: "Entrevistas",
+    totalApplications: "Aplicacoes",
+    applicationsWeek: "Esta semana",
+    careerAi: "IA de carreira",
     actionCenter: "Action Center",
     actionCopy: "Prepare agendas, mensagens, emails e automacoes com aprovacao antes de executar.",
     approve: "Aprovar",
@@ -279,6 +347,27 @@ const translations = {
     pending: "en attente",
     modules: "Modules",
     actions: "Actions",
+    career: "Carriere",
+    activity: "Activite",
+    offline: "Tu es hors ligne - les changements seront synchronises au retour.",
+    notifications: "Notifications",
+    gps: "GPS et temps",
+    appUsage: "Apps",
+    disableNotifications: "Desactiver notifications",
+    enableNotifications: "Activer notifications",
+    addApplication: "Ajouter candidature",
+    company: "Entreprise",
+    role: "Role",
+    url: "URL",
+    notes: "Notes",
+    recruiter: "Recruiter",
+    salary: "Salaire attendu",
+    nextAction: "Prochaine action",
+    responseRate: "Reponse",
+    interviews: "Entretiens",
+    totalApplications: "Candidatures",
+    applicationsWeek: "Cette semaine",
+    careerAi: "IA carriere",
     actionCenter: "Action Center",
     actionCopy: "Prepare agendas, messages, emails et automatisations avec approbation avant execution.",
     approve: "Approuver",
@@ -358,6 +447,14 @@ export function App() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [vision, setVision] = useState<VisionItem[]>([]);
   const [actions, setActions] = useState<ActionItem[]>([]);
+  const [career, setCareer] = useState<JobApplication[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    enabled: true,
+    activityAlerts: true,
+    careerReminders: true,
+    locationInsights: true
+  });
   const [integrations, setIntegrations] = useState<Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>>({});
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [provider, setProvider] = useState<ProviderName>("auto");
@@ -375,6 +472,21 @@ export function App() {
   const [actionTarget, setActionTarget] = useState("");
   const [actionDraft, setActionDraft] = useState("");
   const [actionSchedule, setActionSchedule] = useState("");
+  const [online, setOnline] = useState(navigator.onLine);
+  const [careerForm, setCareerForm] = useState({
+    company: "",
+    role: "",
+    date: new Date().toISOString().slice(0, 10),
+    url: "",
+    status: "applied" as JobStatus,
+    notes: "",
+    recruiterName: "",
+    recruiterEmail: "",
+    salaryExpectation: "",
+    nextActionReminder: ""
+  });
+  const [careerPrompt, setCareerPrompt] = useState("Prepare me for my interview");
+  const [careerAiReply, setCareerAiReply] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [visionPrompt, setVisionPrompt] = useState(translations.es.visionPrompt);
@@ -400,6 +512,23 @@ export function App() {
   }, [activeModules]);
 
   useEffect(() => {
+    const goOnline = () => {
+      setOnline(true);
+      syncWhenOnline().then(() => api.bootstrap()).then((data) => {
+        setCareer(data.career);
+        cacheBootstrap({ tasks: data.tasks, career: data.career, messages: data.messages });
+      }).catch(() => undefined);
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     api.bootstrap()
       .then((data) => {
         setMessages(data.messages);
@@ -407,11 +536,37 @@ export function App() {
         setTasks(data.tasks);
         setVision(data.vision);
         setActions(data.actions);
+        setCareer(data.career);
+        setActivity(data.activity);
+        setNotificationSettings(data.notificationSettings);
+        cacheBootstrap({ tasks: data.tasks, career: data.career, messages: data.messages });
         setIntegrations(data.integrations);
         const latest = data.messages.at(-1);
         if (latest) setConversationId(latest.conversationId);
       })
-      .catch((err) => setError(err.message));
+      .catch(async (err) => {
+        const offline = await loadOfflineSnapshot();
+        setTasks(offline.tasks);
+        setCareer(offline.career);
+        setMessages(offline.messages);
+        setError(err.message);
+      });
+  }, []);
+
+  useEffect(() => {
+    const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:4100/ws`;
+    const socket = new WebSocket(wsUrl);
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data) as { type: string };
+      if (message.type.startsWith("career:") || message.type.startsWith("activity:") || message.type.startsWith("notifications:")) {
+        api.bootstrap().then((data) => {
+          setCareer(data.career);
+          setActivity(data.activity);
+          setNotificationSettings(data.notificationSettings);
+        }).catch(() => undefined);
+      }
+    };
+    return () => socket.close();
   }, []);
 
   const activeMessages = useMemo(
@@ -424,6 +579,8 @@ export function App() {
   const navItems: { key: ViewKey; label: string; icon: ReactNode }[] = [
     { key: "chat", label: t.chat, icon: <Bot size={17} /> },
     { key: "actions", label: t.actions, icon: <Play size={17} /> },
+    { key: "career", label: t.career, icon: <BriefcaseBusiness size={17} /> },
+    { key: "activity", label: t.activity, icon: <MapPin size={17} /> },
     { key: "tasks", label: t.tasks, icon: <CheckCircle2 size={17} /> },
     { key: "memory", label: t.memory, icon: <Brain size={17} /> },
     { key: "vision", label: t.visionAI, icon: <ImagePlus size={17} /> },
@@ -485,6 +642,88 @@ export function App() {
     setActionTarget("");
     setActionDraft("");
     setActionSchedule("");
+  }
+
+  async function addCareerApplication(event: FormEvent) {
+    event.preventDefault();
+    if (!careerForm.company.trim() || !careerForm.role.trim()) return;
+    const now = new Date().toISOString();
+    const localItem: JobApplication = {
+      id: crypto.randomUUID(),
+      ...careerForm,
+      synced: online,
+      createdAt: now,
+      updatedAt: now
+    };
+    setCareer((current) => [localItem, ...current]);
+    await offlineDb.career.put(localItem);
+
+    if (online) {
+      const saved = await api.addCareerApplication(careerForm);
+      setCareer((current) => current.map((item) => (item.id === localItem.id ? saved : item)));
+      await offlineDb.career.put(saved);
+    } else {
+      await queueSync({ entity: "career", operation: "create", payload: localItem });
+    }
+
+    setCareerForm({
+      company: "",
+      role: "",
+      date: new Date().toISOString().slice(0, 10),
+      url: "",
+      status: "applied",
+      notes: "",
+      recruiterName: "",
+      recruiterEmail: "",
+      salaryExpectation: "",
+      nextActionReminder: ""
+    });
+  }
+
+  async function askCareerAi(prompt: string) {
+    setBusy(true);
+    try {
+      const reply = await api.careerAi(prompt, provider);
+      setCareerAiReply(reply.content);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.noSend);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addCurrentLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const item = await api.addActivity({
+        type: "location",
+        title: "GPS check-in",
+        detail: "Location captured from browser permission",
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        occurredAt: new Date().toISOString()
+      });
+      setActivity((current) => [item, ...current]);
+    });
+  }
+
+  async function addAppUsage() {
+    const appName = window.prompt("App name");
+    const minutes = Number(window.prompt("Minutes") ?? 0);
+    if (!appName || !minutes) return;
+    const item = await api.addActivity({
+      type: "app_usage",
+      title: `${appName}: ${minutes} min`,
+      appName,
+      durationMinutes: minutes,
+      occurredAt: new Date().toISOString()
+    });
+    setActivity((current) => [item, ...current]);
+  }
+
+  async function toggleNotifications() {
+    const updated = await api.updateNotificationSettings({ enabled: !notificationSettings.enabled });
+    setNotificationSettings(updated);
   }
 
   async function updateActionStatus(action: ActionItem, status: ActionStatus) {
@@ -656,6 +895,12 @@ export function App() {
         </header>
 
         {error && <div className="error-banner">{error}</div>}
+        {!online && (
+          <div className="offline-banner">
+            <WifiOff size={17} />
+            <span>{t.offline}</span>
+          </div>
+        )}
 
         <section className="mobile-callout">
           <Smartphone size={18} />
@@ -739,6 +984,69 @@ export function App() {
                       <button onClick={() => updateActionStatus(action, "cancelled")} title={t.cancel}><ThumbsDown size={15} />{t.cancel}</button>
                       <button onClick={() => removeAction(action.id)} title={t.delete}><Trash2 size={15} /></button>
                     </div>
+                  </article>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel icon={<BriefcaseBusiness size={17} />} title={t.career} view="career" activeView={activeView}>
+              <div className="career-stats">
+                <Metric icon={<BriefcaseBusiness size={16} />} label={t.totalApplications} value={career.length} />
+                <Metric icon={<Mail size={16} />} label={t.responseRate} value={careerResponseRate(career)} />
+                <Metric icon={<CalendarDays size={16} />} label={t.interviews} value={career.filter((item) => item.status === "interview").length} />
+                <Metric icon={<Target size={16} />} label={t.applicationsWeek} value={applicationsThisWeek(career)} />
+              </div>
+              <form className="career-form" onSubmit={addCareerApplication}>
+                <input value={careerForm.company} onChange={(event) => setCareerForm({ ...careerForm, company: event.target.value })} placeholder={t.company} />
+                <input value={careerForm.role} onChange={(event) => setCareerForm({ ...careerForm, role: event.target.value })} placeholder={t.role} />
+                <input type="date" value={careerForm.date} onChange={(event) => setCareerForm({ ...careerForm, date: event.target.value })} />
+                <select value={careerForm.status} onChange={(event) => setCareerForm({ ...careerForm, status: event.target.value as JobStatus })}>
+                  <option value="applied">applied</option>
+                  <option value="screening">screening</option>
+                  <option value="interview">interview</option>
+                  <option value="offer">offer</option>
+                  <option value="rejected">rejected</option>
+                </select>
+                <input value={careerForm.url} onChange={(event) => setCareerForm({ ...careerForm, url: event.target.value })} placeholder={t.url} />
+                <input value={careerForm.recruiterName} onChange={(event) => setCareerForm({ ...careerForm, recruiterName: event.target.value })} placeholder={t.recruiter} />
+                <input value={careerForm.salaryExpectation} onChange={(event) => setCareerForm({ ...careerForm, salaryExpectation: event.target.value })} placeholder={t.salary} />
+                <input value={careerForm.nextActionReminder} onChange={(event) => setCareerForm({ ...careerForm, nextActionReminder: event.target.value })} placeholder={t.nextAction} />
+                <textarea value={careerForm.notes} onChange={(event) => setCareerForm({ ...careerForm, notes: event.target.value })} placeholder={t.notes} />
+                <button className="wide-button"><Plus size={17} />{t.addApplication}</button>
+              </form>
+              <div className="career-ai">
+                <input value={careerPrompt} onChange={(event) => setCareerPrompt(event.target.value)} placeholder={t.careerAi} />
+                <button onClick={() => askCareerAi(careerPrompt)}><Bot size={16} />{t.careerAi}</button>
+                {careerAiReply && <p>{careerAiReply}</p>}
+              </div>
+              <div className="application-list">
+                {career.slice(0, 8).map((item) => (
+                  <article className="application-card" key={item.id}>
+                    <strong>{item.company} · {item.role}</strong>
+                    <span>{item.status} · {item.date}{item.synced === false ? " · offline" : ""}</span>
+                    {item.nextActionReminder && <small>{item.nextActionReminder}</small>}
+                    {item.url && <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>}
+                  </article>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel icon={<MapPin size={17} />} title={t.activity} view="activity" activeView={activeView}>
+              <div className="activity-actions">
+                <button onClick={addCurrentLocation}><MapPin size={16} />{t.gps}</button>
+                <button onClick={addAppUsage}><Smartphone size={16} />{t.appUsage}</button>
+                <button onClick={toggleNotifications}>
+                  <Bell size={16} />
+                  {notificationSettings.enabled ? t.disableNotifications : t.enableNotifications}
+                </button>
+              </div>
+              <div className="activity-list">
+                {activity.slice(0, 10).map((item) => (
+                  <article className="activity-card" key={item.id}>
+                    <strong>{item.title}</strong>
+                    <span>{item.type} · {new Date(item.occurredAt).toLocaleString()}</span>
+                    {item.detail && <p>{item.detail}</p>}
+                    {item.latitude && item.longitude && <small>{item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</small>}
                   </article>
                 ))}
               </div>
@@ -890,6 +1198,17 @@ function actionLabel(status: ActionStatus, t: (typeof translations)["es"]) {
   if (status === "done") return t.actionDone;
   if (status === "cancelled") return t.actionCancelled;
   return t.actionPending;
+}
+
+function careerResponseRate(applications: JobApplication[]) {
+  if (applications.length === 0) return 0;
+  const responses = applications.filter((item) => item.status !== "applied" && item.status !== "rejected").length;
+  return Math.round((responses / applications.length) * 100);
+}
+
+function applicationsThisWeek(applications: JobApplication[]) {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return applications.filter((item) => new Date(item.date).getTime() >= weekAgo).length;
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {

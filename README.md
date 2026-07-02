@@ -14,6 +14,11 @@ Este repositorio ya incluye un MVP funcional:
 - Vision AI para analizar imagenes, capturas y errores visuales.
 - Vision Memory para guardar analisis de imagenes.
 - Selector de proveedor: `auto`, `OpenAI`, `Claude`, `Gemini`, `Ollama` o `local`.
+- Selector de idioma: espanol, ingles, portugues y frances.
+- Tema claro y tema oscuro.
+- Interfaz responsive para Android y navegadores moviles.
+- Modulos interactivos para activar ideas del segundo cerebro y convertirlas en tareas.
+- Manifest PWA para usarlo desde Chrome como app instalada.
 - Dashboard web en React.
 - Backend en Node.js + TypeScript.
 - Persistencia local en JSON para desarrollo rapido.
@@ -52,6 +57,14 @@ Servicios:
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:4100`
+
+En Android:
+
+1. Abre `http://TU-IP-LOCAL:5173` desde Chrome si el servidor corre en tu PC.
+2. En el menu de Chrome toca **Agregar a pantalla de inicio**.
+3. Sentinel se abrira como una app web instalada.
+
+Si lo usas en el mismo equipo, abre `http://localhost:5173`.
 
 Build:
 
@@ -142,6 +155,18 @@ Casos de uso:
 - Imagenes de documentos para extraer informacion.
 
 Si no hay proveedor multimodal configurado, Sentinel guarda la imagen y responde con una guia local. Para analisis real de pixeles/OCR, configura OpenAI, Claude, Gemini u Ollama con un modelo compatible con vision.
+
+### Experiencia interactiva
+
+La interfaz incluye:
+
+- Logo con escudo, ojo y target.
+- Hover/tap states en tarjetas, botones, modulos, busquedas y mensajes.
+- Navegacion por secciones para pantallas pequenas.
+- Tema claro/oscuro persistente.
+- Idiomas `ES`, `EN`, `PT` y `FR`.
+- Modulos clicables para activar areas como carrera, aprendizaje, ciberseguridad, documentos, reuniones, voz, mobile, finanzas, salud, Gmail, GitHub y objetivos.
+- Boton para convertir cualquier modulo en una tarea.
 
 ## Arquitectura actual
 

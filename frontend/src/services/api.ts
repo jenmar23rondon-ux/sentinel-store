@@ -119,7 +119,7 @@ export const api = {
       body: JSON.stringify(patch)
     }),
 
-  worldPulse: () => request<WorldPulse>("/api/world-pulse"),
+  worldPulse: (lang = "es") => request<WorldPulse>(`/api/world-pulse?lang=${encodeURIComponent(lang)}`),
 
   analyzeVideo: (input: { question: string; youtubeUrl?: string; videoData?: string; mimeType?: string }) =>
     request<{ provider: string; content: string }>("/api/video/analyze", {

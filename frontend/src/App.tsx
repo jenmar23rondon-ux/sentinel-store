@@ -7,10 +7,12 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Circle,
   Clipboard,
   Crosshair,
   Eye,
+  EyeOff,
   FileText,
   Github,
   Globe2,
@@ -535,7 +537,11 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sentinel-theme") as Theme) || "light");
   const [activeView, setActiveView] = useState<ViewKey>("chat");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCompact, setSidebarCompact] = useState(() => localStorage.getItem("sentinel-sidebar-compact") === "true");
+  const [navSettingsOpen, setNavSettingsOpen] = useState(false);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<string[]>(() => JSON.parse(localStorage.getItem("sentinel-modules") || "[]"));
+  const [hiddenNavItems, setHiddenNavItems] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("sentinel-hidden-nav") || "[]"));
   const [chatInput, setChatInput] = useState("");
   const [memoryInput, setMemoryInput] = useState("");
   const [taskInput, setTaskInput] = useState("");
@@ -594,6 +600,14 @@ export function App() {
   }, [activeModules]);
 
   useEffect(() => {
+    localStorage.setItem("sentinel-hidden-nav", JSON.stringify(hiddenNavItems));
+  }, [hiddenNavItems]);
+
+  useEffect(() => {
+    localStorage.setItem("sentinel-sidebar-compact", String(sidebarCompact));
+  }, [sidebarCompact]);
+
+  useEffect(() => {
     localStorage.setItem("sentinel-sources", JSON.stringify(sources));
   }, [sources]);
 
@@ -644,8 +658,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    api.worldPulse().then(setWorldPulse).catch(() => undefined);
-  }, []);
+    api.worldPulse(language).then(setWorldPulse).catch(() => undefined);
+  }, [language]);
 
   useEffect(() => {
     const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:4100/ws`;
@@ -683,6 +697,13 @@ export function App() {
     { key: "vision", label: t.visionAI, icon: <ImagePlus size={17} /> },
     { key: "search", label: t.internet, icon: <Globe2 size={17} /> },
     { key: "modules", label: t.modules, icon: <Target size={17} /> }
+  ];
+  const visibleNavItems = navItems.filter((item) => !hiddenNavItems.includes(item.key));
+  const languageOptions: { key: Language; label: string; name: string }[] = [
+    { key: "es", label: "ES", name: "Español" },
+    { key: "en", label: "EN", name: "English" },
+    { key: "pt", label: "PT", name: "Português" },
+    { key: "fr", label: "FR", name: "Français" }
   ];
 
   async function sendMessage(event: FormEvent) {
@@ -970,9 +991,14 @@ export function App() {
     setMobileNavOpen(false);
   }
 
+  function toggleNavItem(view: ViewKey) {
+    if (view === activeView) return;
+    setHiddenNavItems((current) => current.includes(view) ? current.filter((item) => item !== view) : [...current, view]);
+  }
+
   return (
-    <main className="app-shell">
-      <aside className={`sidebar ${mobileNavOpen ? "open" : ""}`}>
+    <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""}`}>
+      <aside className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-label="Sentinel logo">
             <Shield size={25} />
@@ -985,8 +1011,36 @@ export function App() {
           </div>
         </div>
 
+        <div className="nav-tools">
+          <button onClick={() => setSidebarCompact((value) => !value)} title={sidebarCompact ? "Expand" : "Compact"}>
+            <SlidersHorizontal size={16} />
+            <span>{sidebarCompact ? "Expand" : "Compact"}</span>
+          </button>
+          <button onClick={() => setNavSettingsOpen((value) => !value)} title="Customize navigation">
+            <EyeOff size={16} />
+            <span>Hide</span>
+          </button>
+        </div>
+
+        {navSettingsOpen && (
+          <section className="nav-settings">
+            {navItems.map((item) => (
+              <label key={item.key} className={hiddenNavItems.includes(item.key) ? "hidden" : ""}>
+                <input
+                  type="checkbox"
+                  checked={!hiddenNavItems.includes(item.key)}
+                  disabled={item.key === activeView}
+                  onChange={() => toggleNavItem(item.key)}
+                />
+                {item.icon}
+                <span>{item.label}</span>
+              </label>
+            ))}
+          </section>
+        )}
+
         <nav className="nav-list">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <button className={activeView === item.key ? "active" : ""} key={item.key} onClick={() => switchView(item.key)}>
               {item.icon}
               <span>{item.label}</span>
@@ -1027,15 +1081,28 @@ export function App() {
             <p>{t.commandCopy}</p>
           </div>
           <div className="control-cluster">
-            <label className="control-select" title={t.language}>
-              <Languages size={17} />
-              <select value={language} onChange={(event) => setLanguage(event.target.value as Language)}>
-                <option value="es">ES</option>
-                <option value="en">EN</option>
-                <option value="pt">PT</option>
-                <option value="fr">FR</option>
-              </select>
-            </label>
+            <div className={`language-picker ${languageMenuOpen ? "open" : ""}`} title={t.language}>
+              <button className="language-trigger" onClick={() => setLanguageMenuOpen((value) => !value)}>
+                <Languages size={17} />
+                <span>{languageOptions.find((item) => item.key === language)?.label}</span>
+                <ChevronDown size={15} />
+              </button>
+              <div className="language-menu">
+                {languageOptions.map((item) => (
+                  <button
+                    className={language === item.key ? "selected" : ""}
+                    key={item.key}
+                    onClick={() => {
+                      setLanguage(item.key);
+                      setLanguageMenuOpen(false);
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    <small>{item.name}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
             <button className="theme-toggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title={t.theme}>
               {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
               <span>{theme === "light" ? t.dark : t.light}</span>
@@ -1148,6 +1215,14 @@ export function App() {
                     <div className="market-row gold">
                       <span>{worldPulse.gold.label}</span>
                       <strong>{worldPulse.gold.value}</strong>
+                      <em>{worldPulse.gold.change}</em>
+                    </div>
+                  )}
+                  {worldPulse?.bitcoin && (
+                    <div className="market-row bitcoin">
+                      <span>{worldPulse.bitcoin.label}</span>
+                      <strong>{formatMoneyValue(worldPulse.bitcoin.value, "$")}</strong>
+                      <em>{worldPulse.bitcoin.change24h} · COP {worldPulse.bitcoin.cop ? Number(worldPulse.bitcoin.cop).toLocaleString() : "n/a"}</em>
                     </div>
                   )}
                 </section>
@@ -1476,6 +1551,12 @@ function careerResponseRate(applications: JobApplication[]) {
 function applicationsThisWeek(applications: JobApplication[]) {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   return applications.filter((item) => new Date(item.date).getTime() >= weekAgo).length;
+}
+
+function formatMoneyValue(value: string | number, prefix = "") {
+  if (typeof value === "number") return `${prefix}${value.toLocaleString()}`;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? `${prefix}${parsed.toLocaleString()}` : value;
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {

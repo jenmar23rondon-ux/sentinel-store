@@ -237,9 +237,11 @@ Permite consultar informacion actual. Si `SERPER_API_KEY` esta configurada, usa 
 Una seccion para entender que esta pasando en el mundo:
 
 - Noticias importantes por pais y ciudad.
-- Globo mundial interactivo con puntos de noticia.
+- Globo mundial interactivo con puntos de noticia y animacion tipo planeta.
+- Noticias adaptadas al idioma seleccionado: ES, EN, PT o FR.
 - Monedas importantes y peso colombiano.
-- Oro.
+- Oro usando feed publico de Yahoo Finance.
+- Bitcoin usando CoinGecko.
 - Ranking de paises por PIB y probabilidad estimada de crecimiento.
 
 Las noticias usan feeds RSS publicos y monedas usan una API abierta. Para datos financieros de produccion conviene conectar proveedores oficiales/pagos.
@@ -297,6 +299,8 @@ La interfaz incluye:
 - Hover/tap states en tarjetas, botones, modulos, busquedas y mensajes.
 - Botones bajo respuestas del chat para copiar, reproducir, valorar y reintentar.
 - Animacion de pensamiento con el logo de Sentinel: escudo, ojo y target girando.
+- Selector de idioma custom con animacion, sin dropdown nativo.
+- Sidebar configurable: modo compacto y opcion para ocultar secciones que no uses.
 - Navegacion por secciones para pantallas pequenas.
 - Tema claro/oscuro persistente.
 - Idiomas `ES`, `EN`, `PT` y `FR`.

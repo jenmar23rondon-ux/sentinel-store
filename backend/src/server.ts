@@ -160,18 +160,21 @@ app.post("/api/search", async (req, res, next) => {
   }
 });
 
-app.get("/api/world-pulse", async (_req, res) => {
+app.get("/api/world-pulse", async (req, res) => {
+  const lang = z.enum(["es", "en", "pt", "fr"]).catch("es").parse(req.query.lang);
   const [news, currencies, gold] = await Promise.all([
-    fetchWorldNews().catch(() => fallbackNews()),
+    fetchWorldNews(lang).catch(() => fallbackNews()),
     fetchCurrencies().catch(() => fallbackCurrencies()),
-    fetchGold().catch(() => ({ label: "Gold spot", value: "Unavailable", change: "Add a metals API key later" }))
+    fetchGold().catch(() => ({ label: "Gold futures USD/oz", value: "Unavailable", change: "Yahoo Finance fallback failed" }))
   ]);
+  const bitcoin = await fetchBitcoin().catch(() => ({ code: "BTC", label: "Bitcoin USD", value: "Unavailable" }));
 
   res.json({
     updatedAt: new Date().toISOString(),
     news,
     currencies,
     gold,
+    bitcoin,
     economies: economyRanking()
   });
 });
@@ -396,23 +399,30 @@ function integrationStatus() {
   };
 }
 
-async function fetchWorldNews() {
+async function fetchWorldNews(lang: "es" | "en" | "pt" | "fr") {
+  const feedLocale = {
+    es: { hl: "es-419", ceidLang: "es-419" },
+    en: { hl: "en", ceidLang: "en" },
+    pt: { hl: "pt-BR", ceidLang: "pt-419" },
+    fr: { hl: "fr", ceidLang: "fr" }
+  }[lang];
   const feeds = [
-    { country: "United States", city: "New York", url: "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en", lat: 40.7128, lng: -74.006 },
-    { country: "Colombia", city: "Bogota", url: "https://news.google.com/rss?hl=es-419&gl=CO&ceid=CO:es-419", lat: 4.711, lng: -74.0721 },
-    { country: "Brazil", city: "Sao Paulo", url: "https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt-419", lat: -23.5558, lng: -46.6396 },
-    { country: "France", city: "Paris", url: "https://news.google.com/rss?hl=fr&gl=FR&ceid=FR:fr", lat: 48.8566, lng: 2.3522 },
-    { country: "Japan", city: "Tokyo", url: "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja", lat: 35.6762, lng: 139.6503 },
-    { country: "India", city: "New Delhi", url: "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en", lat: 28.6139, lng: 77.209 }
+    { country: "United States", city: "New York", gl: "US", lat: 40.7128, lng: -74.006 },
+    { country: "Colombia", city: "Bogota", gl: "CO", lat: 4.711, lng: -74.0721 },
+    { country: "Brazil", city: "Sao Paulo", gl: "BR", lat: -23.5558, lng: -46.6396 },
+    { country: "France", city: "Paris", gl: "FR", lat: 48.8566, lng: 2.3522 },
+    { country: "Japan", city: "Tokyo", gl: "JP", lat: 35.6762, lng: 139.6503 },
+    { country: "India", city: "New Delhi", gl: "IN", lat: 28.6139, lng: 77.209 }
   ];
 
   const results = [];
   for (const feed of feeds) {
-    const response = await fetch(feed.url);
+    const url = `https://news.google.com/rss?hl=${feedLocale.hl}&gl=${feed.gl}&ceid=${feed.gl}:${feedLocale.ceidLang}`;
+    const response = await fetch(url);
     const xml = await response.text();
     const title = decodeXml(xml.match(/<item>[\s\S]*?<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ?? xml.match(/<item>[\s\S]*?<title>(.*?)<\/title>/)?.[1] ?? "Latest headlines");
-    const link = decodeXml(xml.match(/<item>[\s\S]*?<link>(.*?)<\/link>/)?.[1] ?? feed.url);
-    results.push({ ...feed, title, link, impact: inferNewsImpact(title) });
+    const link = decodeXml(xml.match(/<item>[\s\S]*?<link>(.*?)<\/link>/)?.[1] ?? url);
+    results.push({ ...feed, url, title, link, impact: inferNewsImpact(title) });
   }
   return results;
 }
@@ -433,10 +443,25 @@ async function fetchCurrencies() {
 }
 
 async function fetchGold() {
-  const response = await fetch("https://api.metals.live/v1/spot/gold");
-  const data = await response.json() as unknown[];
-  const value = Array.isArray(data) ? JSON.stringify(data[0]).match(/[\d.]+/)?.[0] : undefined;
-  return { label: "Gold spot USD/oz", value: value ? Number(value).toFixed(2) : "Unavailable", change: "live metals feed" };
+  const response = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1d&interval=5m");
+  const data = await response.json() as { chart?: { result?: { meta?: { regularMarketPrice?: number; previousClose?: number } }[] } };
+  const meta = data.chart?.result?.[0]?.meta;
+  const value = meta?.regularMarketPrice;
+  const previous = meta?.previousClose;
+  const change = value && previous ? `${(((value - previous) / previous) * 100).toFixed(2)}%` : "live futures feed";
+  return { label: "Gold futures USD/oz", value: value ? value.toFixed(2) : "Unavailable", change };
+}
+
+async function fetchBitcoin() {
+  const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,cop&include_24hr_change=true");
+  const data = await response.json() as { bitcoin?: { usd?: number; cop?: number; usd_24h_change?: number } };
+  return {
+    code: "BTC",
+    label: "Bitcoin",
+    value: data.bitcoin?.usd ? Number(data.bitcoin.usd.toFixed(2)) : "Unavailable",
+    cop: data.bitcoin?.cop,
+    change24h: data.bitcoin?.usd_24h_change ? `${data.bitcoin.usd_24h_change.toFixed(2)}%` : "n/a"
+  };
 }
 
 function economyRanking() {

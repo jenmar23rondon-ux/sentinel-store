@@ -128,6 +128,12 @@ export const api = {
 
   deleteChart: (id: string) => request<void>(`/api/charts/${id}`, { method: "DELETE" }),
 
+  sendFeedback: (messageId: string, rating: "up" | "down", note?: string) =>
+    request<void>("/api/feedback", {
+      method: "POST",
+      body: JSON.stringify({ messageId, rating, note })
+    }),
+
   worldPulse: (lang = "es") => request<WorldPulse>(`/api/world-pulse?lang=${encodeURIComponent(lang)}`),
 
   analyzeVideo: (input: { question: string; youtubeUrl?: string; videoData?: string; mimeType?: string }) =>

@@ -16,6 +16,14 @@ export interface Message {
   createdAt: string;
 }
 
+export interface MessageFeedback {
+  id: string;
+  messageId: string;
+  rating: "up" | "down";
+  note?: string;
+  createdAt: string;
+}
+
 export interface MemoryItem {
   id: string;
   content: string;

@@ -34,6 +34,7 @@ app.get("/api/bootstrap", async (_req, res) => {
     career: store.career,
     activity: store.activity,
     charts: store.charts,
+    feedback: store.feedback,
     notificationSettings: store.notificationSettings,
     providers: providerStatus(),
     integrations: integrationStatus()
@@ -431,6 +432,21 @@ app.get("/api/integrations", (_req, res) => {
   res.json(integrationStatus());
 });
 
+app.post("/api/feedback", async (req, res, next) => {
+  try {
+    const body = z.object({
+      messageId: z.string().min(1),
+      rating: z.enum(["up", "down"]),
+      note: z.string().optional()
+    }).parse(req.body);
+    const item = await db.addFeedback(body);
+    broadcast({ type: "feedback:created", payload: item });
+    res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const message = error instanceof Error ? error.message : "Unexpected error";
   res.status(400).json({ error: message });
@@ -473,19 +489,22 @@ async function maybeBuildWebContext(message: string) {
   try {
     const results = await webSearch(message);
     await db.addToolCall({ name: "chat_web_search", input: { message }, output: results });
-    if (results.length === 0) return "No encontre resultados web confiables para esta pregunta.";
+    if (results.length === 0) return "";
     return results
       .slice(0, 5)
       .map((item, index) => `${index + 1}. ${item.title}\n   ${item.snippet || "Sin resumen disponible"}\n   Fuente: ${item.url}`)
       .join("\n");
   } catch (error) {
     const detail = error instanceof Error ? error.message : "error desconocido";
-    return `No pude completar la busqueda web. Detalle: ${detail}`;
+    await db.addToolCall({ name: "chat_web_search_error", input: { message }, output: { error: detail } });
+    return "";
   }
 }
 
 function shouldUseWebSearch(message: string) {
-  return /(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|d[oó]lar|clima|quien es el presidente|ultim[oa]s?|latest|news|today|current)/i.test(message);
+  const lower = message.toLowerCase();
+  if (/(crea una grafica|gr[aá]fica|tarea:|pendiente:|recuerda que|recuerda:|envia|enviar|agenda|agendar)/i.test(lower)) return false;
+  return /(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|d[oó]lar|clima|quien|qu[eé] es|c[oó]mo funciona|me puedes decir|dime sobre|explica|mejor para|beneficios|riesgos|ultim[oa]s?|latest|news|today|current|\?)/i.test(message);
 }
 
 async function fetchWorldNews(lang: "es" | "en" | "pt" | "fr") {

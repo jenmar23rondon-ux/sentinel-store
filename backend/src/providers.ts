@@ -303,6 +303,26 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
       "Puedes pedirme: \"crea una grafica de horas de enfoque: lunes 2, martes 3\" o \"hazme un plan de concentracion para estudiar backend\"."
     ].join("\n");
   }
+  const topicAnswer = answerKnownTopic(lower);
+  if (topicAnswer) return topicAnswer;
+  const explainMatch = lower.match(/(?:qu[eé]\s+es|explica|dime sobre|me puedes decir(?:me)?(?: que es| sobre)?)\s+(.{2,80})/i);
+  if (explainMatch) {
+    const topic = explainMatch[1].replace(/[?¿.]/g, "").trim();
+    return [
+      `${capitalize(topic)} es un tema que puedo ayudarte a entender y organizar.`,
+      "",
+      "En modo local puedo darte una explicacion general, ejemplos y pasos de estudio. Para una respuesta con fuentes actualizadas, configura SERPER_API_KEY y una IA como OPENAI_API_KEY o GEMINI_API_KEY en Railway.",
+      "",
+      "Formato rapido para estudiarlo:",
+      "1. Definicion simple.",
+      "2. Para que sirve.",
+      "3. Ejemplo practico.",
+      "4. Errores comunes.",
+      "5. Mini proyecto para practicar.",
+      "",
+      `Si quieres, dime: "explicame ${topic} con ejemplo de codigo" o "crea un plan para aprender ${topic}".`
+    ].join("\n");
+  }
   if (/(qu[eé] es|explica|como|c[oó]mo|ayuda|mejor|plan|recomienda|dime)/i.test(lower)) {
     return [
       "Te respondo en modo local:",
@@ -315,6 +335,42 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
     ].join("\n");
   }
   return `Estoy listo en modo local. Puedo responder guias practicas, crear tareas, memorias, acciones y graficas. Para respuestas con IA avanzada conecta OPENAI_API_KEY, GEMINI_API_KEY o ANTHROPIC_API_KEY en Railway.\n\nContexto actual:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`;
+}
+
+function answerKnownTopic(lower: string) {
+  if (/\bnode(?:\.js| js)?\b/.test(lower)) {
+    return [
+      "Node.js es un entorno para ejecutar JavaScript fuera del navegador, normalmente en servidores.",
+      "",
+      "Sirve para crear APIs, backends, scripts, automatizaciones, WebSockets, herramientas CLI y servicios en tiempo real.",
+      "",
+      "Ejemplo simple:",
+      "- Frontend: React corre en el navegador.",
+      "- Backend: Node.js recibe peticiones, consulta datos y responde JSON.",
+      "",
+      "En tu proyecto Sentinel, el backend usa Node.js + Express para rutas como `/api/chat`, `/api/search` y `/api/charts`."
+    ].join("\n");
+  }
+  if (/\breact\b/.test(lower)) {
+    return "React es una libreria de JavaScript para crear interfaces interactivas con componentes. En Sentinel se usa para el chat, paneles, graficas, Notebook, temas claro/oscuro y PWA.";
+  }
+  if (/\bdocker\b/.test(lower)) {
+    return "Docker permite empaquetar una app con sus dependencias en contenedores. Te ayuda a correr backend, frontend y base de datos de forma consistente en local o produccion.";
+  }
+  if (/\bpostgres|postgresql\b/.test(lower)) {
+    return "PostgreSQL es una base de datos relacional robusta. En Sentinel sirve para guardar memoria, tareas, historiales, graficas, acciones y datos de carrera de forma persistente.";
+  }
+  if (/\bapi\b/.test(lower)) {
+    return "Una API es una interfaz para que sistemas se comuniquen. Por ejemplo, tu frontend llama al backend con `/api/chat` para enviar preguntas y recibir respuestas.";
+  }
+  if (/\btypescript\b/.test(lower)) {
+    return "TypeScript es JavaScript con tipos. Ayuda a detectar errores antes de ejecutar y hace mas mantenibles proyectos grandes como Sentinel AI OS.";
+  }
+  return "";
+}
+
+function capitalize(value: string) {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
 function extractInlineWebContext(message: string) {

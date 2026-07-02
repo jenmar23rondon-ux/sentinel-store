@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import { env } from "./env.js";
-import type { ActionItem, ActivityEvent, Conversation, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
+import type { ActionItem, ActivityEvent, Conversation, CustomChart, JobApplication, MemoryItem, Message, MessageFeedback, NotificationSettings, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
 
 const initialStore: Store = {
   conversations: [],
@@ -20,7 +20,8 @@ const initialStore: Store = {
     careerReminders: true,
     locationInsights: true
   },
-  toolCalls: []
+  toolCalls: [],
+  feedback: []
 };
 
 let cache: Store | null = null;
@@ -45,6 +46,7 @@ async function ensureStore(): Promise<Store> {
     cache.charts ??= [];
     cache.notificationSettings ??= structuredClone(initialStore.notificationSettings);
     cache.toolCalls ??= [];
+    cache.feedback ??= [];
   } catch {
     cache = structuredClone(initialStore);
     await persist();
@@ -273,6 +275,18 @@ export const db = {
     const store = await ensureStore();
     const item = { ...call, id: nanoid(), createdAt: new Date().toISOString() };
     store.toolCalls.unshift(item);
+    await persist();
+    return item;
+  },
+
+  async addFeedback(input: Omit<MessageFeedback, "id" | "createdAt">) {
+    const store = await ensureStore();
+    const item: MessageFeedback = {
+      ...input,
+      id: nanoid(),
+      createdAt: new Date().toISOString()
+    };
+    store.feedback.unshift(item);
     await persist();
     return item;
   }

@@ -65,7 +65,7 @@ type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
 type ViewKey = "chat" | "world" | "analytics" | "video" | "notebook" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
 
-const defaultPanelOrder: ViewKey[] = ["world", "notebook", "analytics", "video", "actions", "career", "activity", "memory", "tasks", "search", "vision", "modules"];
+const defaultPanelOrder: ViewKey[] = ["notebook", "world", "analytics", "video", "actions", "career", "activity", "memory", "tasks", "search", "vision", "modules"];
 
 const translations = {
   es: {
@@ -817,10 +817,10 @@ export function App() {
   const pendingActions = actions.filter((action) => action.status === "pending" || action.status === "approved");
   const navItems: { key: ViewKey; label: string; icon: ReactNode }[] = [
     { key: "chat", label: t.chat, icon: <Bot size={17} /> },
+    { key: "notebook", label: t.notebook, icon: <BookOpen size={17} /> },
     { key: "world", label: t.world, icon: <Globe2 size={17} /> },
     { key: "analytics", label: t.analytics, icon: <BarChart3 size={17} /> },
     { key: "video", label: t.videoAi, icon: <Video size={17} /> },
-    { key: "notebook", label: t.notebook, icon: <BookOpen size={17} /> },
     { key: "actions", label: t.actions, icon: <Play size={17} /> },
     { key: "career", label: t.career, icon: <BriefcaseBusiness size={17} /> },
     { key: "activity", label: t.activity, icon: <MapPin size={17} /> },
@@ -841,12 +841,15 @@ export function App() {
   async function sendMessage(event: FormEvent) {
     event.preventDefault();
     if (!chatInput.trim()) return;
-    const value = chatInput.trim();
+    await submitChat(chatInput.trim());
+  }
+
+  async function submitChat(value: string, retryConversationId = conversationId) {
     setChatInput("");
     setBusy(true);
     setError("");
     try {
-      const data = await api.chat(value, provider, conversationId);
+      const data = await api.chat(value, provider, retryConversationId);
       setConversationId(data.conversation.id);
       setMessages((current) => [...current, ...data.messages]);
       const refreshed = await api.bootstrap();
@@ -860,6 +863,18 @@ export function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function retryMessage(message: Message) {
+    const value = message.role === "user"
+      ? message.content
+      : activeMessages.slice(0, activeMessages.findIndex((item) => item.id === message.id)).reverse().find((item) => item.role === "user")?.content;
+    if (!value) return;
+    await submitChat(value, message.conversationId);
+  }
+
+  async function sendMessageFeedback(message: Message, rating: "up" | "down") {
+    await api.sendFeedback(message.id, rating, `Feedback desde UI para respuesta ${message.provider ?? "local"}`);
   }
 
   async function addMemory(event: FormEvent) {
@@ -1396,7 +1411,11 @@ export function App() {
                     {message.provider && <small>{message.provider}</small>}
                   </div>
                   <p>{message.content}</p>
-                  <MessageActions message={message} />
+                  <MessageActions
+                    message={message}
+                    onRetry={() => retryMessage(message)}
+                    onFeedback={(rating) => sendMessageFeedback(message, rating)}
+                  />
                 </article>
               ))}
               {busy && (
@@ -1993,18 +2012,42 @@ function formatChartValue(value: number, unit?: string) {
   return `${formatted}${unit ? ` ${unit}` : ""}`;
 }
 
-function MessageActions({ message }: { message: Message }) {
+function MessageActions({
+  message,
+  onRetry,
+  onFeedback
+}: {
+  message: Message;
+  onRetry: () => void;
+  onFeedback: (rating: "up" | "down") => void;
+}) {
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+
   async function copyMessage() {
     await navigator.clipboard?.writeText(message.content);
+  }
+
+  function speakMessage() {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    utterance.lang = "es-ES";
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function rateMessage(rating: "up" | "down") {
+    setFeedback(rating);
+    await onFeedback(rating);
   }
 
   return (
     <div className="message-actions">
       <button onClick={copyMessage} title="Copy"><Clipboard size={15} /></button>
-      {message.role === "assistant" && <button title="Play"><Play size={15} /></button>}
-      <button title="Like"><ThumbsUp size={15} /></button>
-      <button title="Dislike"><ThumbsDown size={15} /></button>
-      <button title="Retry"><RefreshCw size={15} /></button>
+      {message.role === "assistant" && <button onClick={speakMessage} title="Play"><Play size={15} /></button>}
+      <button className={feedback === "up" ? "selected" : ""} onClick={() => rateMessage("up")} title="Like"><ThumbsUp size={15} /></button>
+      <button className={feedback === "down" ? "selected" : ""} onClick={() => rateMessage("down")} title="Dislike"><ThumbsDown size={15} /></button>
+      <button onClick={onRetry} title="Retry"><RefreshCw size={15} /></button>
     </div>
   );
 }

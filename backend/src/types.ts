@@ -127,6 +127,14 @@ export interface ToolCall {
   createdAt: string;
 }
 
+export interface MessageFeedback {
+  id: string;
+  messageId: string;
+  rating: "up" | "down";
+  note?: string;
+  createdAt: string;
+}
+
 export interface Store {
   conversations: Conversation[];
   messages: Message[];
@@ -139,4 +147,5 @@ export interface Store {
   charts: CustomChart[];
   notificationSettings: NotificationSettings;
   toolCalls: ToolCall[];
+  feedback: MessageFeedback[];
 }

@@ -615,6 +615,7 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("sentinel-theme") as Theme) || "light");
   const [activeView, setActiveView] = useState<ViewKey>("chat");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarTouchStart, setSidebarTouchStart] = useState<number | null>(null);
   const [sidebarCompact, setSidebarCompact] = useState(() => localStorage.getItem("sentinel-sidebar-compact") === "true");
   const [navSettingsOpen, setNavSettingsOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
@@ -1200,6 +1201,12 @@ export function App() {
     setGlobeDragStart({ x: clientX, y: clientY });
   }
 
+  function finishSidebarSwipe(clientX: number) {
+    if (sidebarTouchStart === null) return;
+    if (clientX - sidebarTouchStart < -64) setMobileNavOpen(false);
+    setSidebarTouchStart(null);
+  }
+
   async function installApp() {
     if (!installPrompt) {
       window.alert(t.installHint);
@@ -1213,7 +1220,11 @@ export function App() {
 
   return (
     <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""}`}>
-      <aside className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""}`}>
+      <aside
+        className={`sidebar ${mobileNavOpen ? "open" : ""} ${sidebarCompact ? "compact" : ""}`}
+        onTouchStart={(event) => setSidebarTouchStart(event.touches[0].clientX)}
+        onTouchEnd={(event) => finishSidebarSwipe(event.changedTouches[0].clientX)}
+      >
         <div className="brand">
           <div className="brand-mark" aria-label="Sentinel logo">
             <Shield size={25} />
@@ -1224,6 +1235,9 @@ export function App() {
             <h1>Sentinel AI OS</h1>
             <p>{t.subtitle}</p>
           </div>
+          <button className="sidebar-close" onClick={() => setMobileNavOpen(false)} title="Close menu">
+            <X size={18} />
+          </button>
         </div>
 
         <div className="nav-tools">
@@ -1285,6 +1299,7 @@ export function App() {
           </div>
         </section>
       </aside>
+      {mobileNavOpen && <button className="sidebar-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation" />}
 
       <section className="workspace">
         <header className="topbar">
@@ -1423,8 +1438,13 @@ export function App() {
                         className={`map-pin impact-${item.impact}`}
                         style={{ left: `${((item.lng + 180) / 360) * 100}%`, top: `${((90 - item.lat) / 180) * 100}%` }}
                         key={`${item.country}-${index}`}
-                        title={`${item.city}: ${item.title}`}
-                      />
+                        title={`${item.country} - ${item.city}: ${item.title}`}
+                      >
+                        <span className="map-pin-label">
+                          <strong>{item.country}</strong>
+                          <small>{item.city} · {item.impact}</small>
+                        </span>
+                      </span>
                     ))}
                   </div>
                   <small>{worldPulse ? new Date(worldPulse.updatedAt).toLocaleString() : "Loading world pulse..."}</small>

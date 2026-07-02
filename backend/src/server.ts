@@ -76,12 +76,14 @@ app.post("/api/chat", async (req, res, next) => {
       .slice(0, 8)
       .map((item) => `- [${item.priority}] ${item.title}${item.dueAt ? ` vence ${item.dueAt}` : ""}`)
       .join("\n");
+    const webContext = await maybeBuildWebContext(body.message);
 
     const reply = await generateAssistantReply({
       provider: body.provider as ProviderName,
       messages: recentMessages,
       memoryContext,
-      taskContext
+      taskContext,
+      webContext
     });
 
     const actionNote = plannedAction
@@ -464,6 +466,26 @@ function integrationStatus() {
     calendar: { configured: false, label: "Google Calendar OAuth", next: true },
     microsoft365: { configured: false, label: "Microsoft 365 Graph", next: true }
   };
+}
+
+async function maybeBuildWebContext(message: string) {
+  if (!shouldUseWebSearch(message)) return "";
+  try {
+    const results = await webSearch(message);
+    await db.addToolCall({ name: "chat_web_search", input: { message }, output: results });
+    if (results.length === 0) return "No encontre resultados web confiables para esta pregunta.";
+    return results
+      .slice(0, 5)
+      .map((item, index) => `${index + 1}. ${item.title}\n   ${item.snippet || "Sin resumen disponible"}\n   Fuente: ${item.url}`)
+      .join("\n");
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "error desconocido";
+    return `No pude completar la busqueda web. Detalle: ${detail}`;
+  }
+}
+
+function shouldUseWebSearch(message: string) {
+  return /(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|d[oó]lar|clima|quien es el presidente|ultim[oa]s?|latest|news|today|current)/i.test(message);
 }
 
 async function fetchWorldNews(lang: "es" | "en" | "pt" | "fr") {

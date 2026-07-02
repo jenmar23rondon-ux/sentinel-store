@@ -6,6 +6,7 @@ interface GenerateInput {
   messages: Pick<Message, "role" | "content">[];
   memoryContext: string;
   taskContext: string;
+  webContext?: string;
 }
 
 interface VisionInput {
@@ -30,7 +31,7 @@ export function providerStatus() {
 export async function generateAssistantReply(input: GenerateInput) {
   const selected = resolveProvider(input.provider);
   const messages = [
-    { role: "system", content: buildSystem(input.memoryContext, input.taskContext) },
+    { role: "system", content: buildSystem(input.memoryContext, input.taskContext, input.webContext) },
     ...input.messages.map((item) => ({ role: item.role, content: item.content }))
   ];
 
@@ -43,13 +44,13 @@ export async function generateAssistantReply(input: GenerateInput) {
     const detail = error instanceof Error ? error.message : "error desconocido";
     return {
       provider: "local",
-      content: `${localReply(input.messages.at(-1)?.content ?? "", input.memoryContext, input.taskContext)}\n\nNota: intente usar ${selected}, pero fallo: ${detail}`
+      content: `${localReply(withWebContext(input.messages.at(-1)?.content ?? "", input.webContext), input.memoryContext, input.taskContext)}\n\nNota: intente usar ${selected}, pero fallo: ${detail}`
     };
   }
 
   return {
     provider: "local",
-    content: localReply(input.messages.at(-1)?.content ?? "", input.memoryContext, input.taskContext)
+    content: localReply(withWebContext(input.messages.at(-1)?.content ?? "", input.webContext), input.memoryContext, input.taskContext)
   };
 }
 
@@ -83,8 +84,12 @@ function resolveProvider(provider: ProviderName): ProviderName {
   return "local";
 }
 
-function buildSystem(memoryContext: string, taskContext: string) {
-  return `${systemPrompt}\n\nMemoria relevante:\n${memoryContext || "Sin memoria guardada."}\n\nTareas abiertas:\n${taskContext || "Sin tareas abiertas."}`;
+function buildSystem(memoryContext: string, taskContext: string, webContext?: string) {
+  return `${systemPrompt}\n\nMemoria relevante:\n${memoryContext || "Sin memoria guardada."}\n\nTareas abiertas:\n${taskContext || "Sin tareas abiertas."}\n\nResultados web recientes:\n${webContext || "Sin resultados web para esta pregunta."}`;
+}
+
+function withWebContext(message: string, webContext?: string) {
+  return webContext ? `${message}\n\n[WEB_CONTEXT]\n${webContext}` : message;
 }
 
 async function openai(messages: { role: string; content: string }[]) {
@@ -269,13 +274,53 @@ async function ollamaVision(input: VisionInput) {
 
 function localReply(lastUserMessage: string, memoryContext: string, taskContext: string) {
   const lower = lastUserMessage.toLowerCase();
+  const webContext = extractInlineWebContext(lastUserMessage);
+  if (/(conectad[oa].*internet|internet.*conectad[oa]|tienes internet|estas conectado)/i.test(lower)) {
+    return webContext
+      ? `Si. Puedo intentar buscar en internet desde el backend. En esta respuesta ya active una busqueda web y recibi resultados.\n\n${webContext}`
+      : "Puedo usar internet si el backend tiene salida a la red. Para busqueda web de mejor calidad configura SERPER_API_KEY en Railway; si no, uso una busqueda fallback.";
+  }
+  if (webContext) {
+    return `Esto encontre en la web y lo resumo para ti:\n\n${webContext}\n\nRecomendacion: revisa las fuentes enlazadas si vas a tomar una decision importante, porque la informacion de internet puede cambiar rapido.`;
+  }
   if (lower.includes("recuerda") || lower.includes("memoria")) {
     return "Puedo ayudarte a convertir eso en memoria persistente. Usa el panel Memoria o escribe la idea completa y la guardamos como dato importante para tus proximas conversaciones.";
   }
   if (lower.includes("tarea") || lower.includes("record")) {
     return "Puedo ayudarte a organizarlo como tarea con prioridad y fecha. En este MVP ya puedes crearla desde Tareas; la siguiente fase seria activar recordatorios reales con Calendar o automatizaciones.";
   }
-  return `Estoy funcionando en modo local. Ya puedo usar tu contexto guardado, tareas y busqueda web; para respuestas mas potentes conecta OpenAI, Claude, Gemini u Ollama en el archivo backend/.env.\n\nContexto actual:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`;
+  if (/(concentraci[oó]n|concentracion|enfocar|focus|productividad|estudiar|aprender)/i.test(lower)) {
+    return [
+      "Para mejorar la concentracion, lo mas efectivo suele ser combinar ambiente, bloques cortos y medicion:",
+      "",
+      "1. Trabaja en bloques de 25 a 50 minutos y descansa 5 a 10 minutos.",
+      "2. Define una sola tarea visible antes de empezar.",
+      "3. Quita notificaciones y deja el telefono lejos o en modo enfoque.",
+      "4. Usa una lista pequena: objetivo, siguiente accion, tiempo estimado.",
+      "5. Duerme bien, toma agua y evita estudiar con demasiadas pestanas abiertas.",
+      "6. Al terminar, registra cuanto avanzaste para que Sentinel pueda crear graficas de progreso.",
+      "",
+      "Puedes pedirme: \"crea una grafica de horas de enfoque: lunes 2, martes 3\" o \"hazme un plan de concentracion para estudiar backend\"."
+    ].join("\n");
+  }
+  if (/(qu[eé] es|explica|como|c[oó]mo|ayuda|mejor|plan|recomienda|dime)/i.test(lower)) {
+    return [
+      "Te respondo en modo local:",
+      "",
+      "Puedo ayudarte a organizar ideas, crear planes, convertir mensajes en tareas, generar graficas con tus datos y preparar acciones pendientes. Para preguntas complejas puedo dar una guia practica, y para informacion actual conviene activar busqueda web con SERPER_API_KEY o conectar OpenAI/Gemini/Claude.",
+      "",
+      `Contexto que tengo ahora:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`,
+      "",
+      "Si quieres una respuesta mas precisa, dime el objetivo, el tiempo disponible y el resultado que esperas."
+    ].join("\n");
+  }
+  return `Estoy listo en modo local. Puedo responder guias practicas, crear tareas, memorias, acciones y graficas. Para respuestas con IA avanzada conecta OPENAI_API_KEY, GEMINI_API_KEY o ANTHROPIC_API_KEY en Railway.\n\nContexto actual:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`;
+}
+
+function extractInlineWebContext(message: string) {
+  const marker = "\n\n[WEB_CONTEXT]\n";
+  const index = message.indexOf(marker);
+  return index >= 0 ? message.slice(index + marker.length).trim() : "";
 }
 
 function visionPrompt(prompt: string) {

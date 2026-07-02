@@ -1,0 +1,53 @@
+export type ProviderName = "auto" | "openai" | "claude" | "gemini" | "ollama" | "local";
+
+export interface Conversation {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  provider?: string;
+  createdAt: string;
+}
+
+export interface MemoryItem {
+  id: string;
+  content: string;
+  tags: string[];
+  importance: number;
+  createdAt: string;
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  notes?: string;
+  priority: "low" | "medium" | "high";
+  status: "open" | "done";
+  dueAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+export interface VisionItem {
+  id: string;
+  prompt: string;
+  analysis: string;
+  provider: string;
+  imagePath: string;
+  imageMimeType: string;
+  tags: string[];
+  createdAt: string;
+}

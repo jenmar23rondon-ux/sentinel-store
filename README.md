@@ -22,6 +22,26 @@ Cuando no hay claves de IA, funciona en modo local. Cuando agregas claves en `.e
 
 ## Ejecutar localmente
 
+### Opcion rapida en Windows
+
+Haz doble clic en:
+
+```text
+run-sentinel.bat
+```
+
+Ese archivo hace esto automaticamente:
+
+- Verifica que Node.js y npm existan.
+- Crea `backend/.env` desde `.env.example` si aun no existe.
+- Instala dependencias si falta `node_modules`.
+- Inicia backend y frontend.
+- Abre `http://localhost:5173` en el navegador.
+
+Para detener la app, vuelve a la ventana del `.bat` y presiona `Ctrl+C`.
+
+### Opcion manual
+
 ```bash
 cd sentinel-ai
 npm install

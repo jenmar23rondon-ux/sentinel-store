@@ -58,7 +58,7 @@ import { registerSW } from "virtual:pwa-register";
 import { api } from "./services/api";
 import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
 import { offlineDb, queueSync } from "./services/offlineDb";
-import type { ActionItem, ActionStatus, ActionType, ActivityEvent, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
+import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
 import type { WorldPulse } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
@@ -99,6 +99,11 @@ const translations = {
     moveUp: "Subir",
     moveDown: "Bajar",
     charts: "Gráficos",
+    smartCharts: "Graficas inteligentes",
+    chartPrompt: "Pidele una grafica a Sentinel",
+    createChart: "Crear grafica",
+    chartExample: "Ej: crea una grafica de horas de estudio: lunes 2, martes 3, miercoles 1.5",
+    noCharts: "Aun no hay graficas personalizadas. Pidele a la IA que cree una con tus datos.",
     probability: "Probabilidad",
     videoAi: "Video AI",
     notebook: "Notebook",
@@ -220,6 +225,11 @@ const translations = {
     moveUp: "Move up",
     moveDown: "Move down",
     charts: "Charts",
+    smartCharts: "Smart charts",
+    chartPrompt: "Ask Sentinel for a chart",
+    createChart: "Create chart",
+    chartExample: "Example: create a chart of study hours: Monday 2, Tuesday 3, Wednesday 1.5",
+    noCharts: "No custom charts yet. Ask the AI to create one with your data.",
     probability: "Probability",
     videoAi: "Video AI",
     notebook: "Notebook",
@@ -341,6 +351,11 @@ const translations = {
     moveUp: "Subir",
     moveDown: "Descer",
     charts: "Graficos",
+    smartCharts: "Graficos inteligentes",
+    chartPrompt: "Peca um grafico ao Sentinel",
+    createChart: "Criar grafico",
+    chartExample: "Ex: cria um grafico de horas de estudo: segunda 2, terca 3, quarta 1.5",
+    noCharts: "Ainda nao ha graficos personalizados. Peca a IA para criar um com seus dados.",
     probability: "Probabilidade",
     videoAi: "Video AI",
     notebook: "Notebook",
@@ -462,6 +477,11 @@ const translations = {
     moveUp: "Monter",
     moveDown: "Descendre",
     charts: "Graphiques",
+    smartCharts: "Graphiques intelligents",
+    chartPrompt: "Demande un graphique a Sentinel",
+    createChart: "Creer graphique",
+    chartExample: "Ex: cree un graphique des heures d'etude: lundi 2, mardi 3, mercredi 1.5",
+    noCharts: "Aucun graphique personnalise pour le moment. Demande a l'IA d'en creer un avec tes donnees.",
     probability: "Probabilite",
     videoAi: "Video AI",
     notebook: "Notebook",
@@ -581,6 +601,7 @@ export function App() {
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [career, setCareer] = useState<JobApplication[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [charts, setCharts] = useState<CustomChart[]>([]);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     enabled: true,
     activityAlerts: true,
@@ -633,6 +654,8 @@ export function App() {
   const [careerPrompt, setCareerPrompt] = useState("Prepare me for my interview");
   const [careerAiReply, setCareerAiReply] = useState("");
   const [worldPulse, setWorldPulse] = useState<WorldPulse | null>(null);
+  const [chartPrompt, setChartPrompt] = useState("Crea una grafica de horas de estudio: lunes 2, martes 3, miercoles 1.5, jueves 4");
+  const [chartKind, setChartKind] = useState<ChartKind>("bar");
   const [videoQuestion, setVideoQuestion] = useState("Resume este video y dime las ideas importantes.");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [videoData, setVideoData] = useState("");
@@ -747,6 +770,7 @@ export function App() {
         setActions(data.actions);
         setCareer(data.career);
         setActivity(data.activity);
+        setCharts(data.charts);
         setNotificationSettings(data.notificationSettings);
         cacheBootstrap({ tasks: data.tasks, career: data.career, messages: data.messages });
         setIntegrations(data.integrations);
@@ -771,10 +795,11 @@ export function App() {
     const socket = new WebSocket(wsUrl);
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data) as { type: string };
-      if (message.type.startsWith("career:") || message.type.startsWith("activity:") || message.type.startsWith("notifications:")) {
+      if (message.type.startsWith("career:") || message.type.startsWith("activity:") || message.type.startsWith("notifications:") || message.type.startsWith("charts:")) {
         api.bootstrap().then((data) => {
           setCareer(data.career);
           setActivity(data.activity);
+          setCharts(data.charts);
           setNotificationSettings(data.notificationSettings);
         }).catch(() => undefined);
       }
@@ -827,7 +852,8 @@ export function App() {
       setMemory(refreshed.memory);
       setTasks(refreshed.tasks);
       setActions(refreshed.actions);
-      setActiveView("chat");
+      setCharts(refreshed.charts);
+      setActiveView(refreshed.charts.length > charts.length ? "analytics" : "chat");
     } catch (err) {
       setError(err instanceof Error ? err.message : t.noSend);
     } finally {
@@ -866,6 +892,27 @@ export function App() {
     setActionTarget("");
     setActionDraft("");
     setActionSchedule("");
+  }
+
+  async function createSmartChart(event: FormEvent) {
+    event.preventDefault();
+    if (!chartPrompt.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const item = await api.createChart(chartPrompt.trim(), { kind: chartKind });
+      setCharts((current) => [item, ...current]);
+      setChartPrompt("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pude crear la grafica");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeChart(id: string) {
+    await api.deleteChart(id);
+    setCharts((current) => current.filter((item) => item.id !== id));
   }
 
   async function createAutomationTemplate(title: string, draft: string) {
@@ -1473,12 +1520,50 @@ export function App() {
                   </div>
                 ))}
               </div>
+              <div className="smart-chart-panel">
+                <div className="panel-title mini-title">
+                  <span className="panel-heading">
+                    <BarChart3 size={16} />
+                    <h3>{t.smartCharts}</h3>
+                  </span>
+                </div>
+                <form className="smart-chart-form" onSubmit={createSmartChart}>
+                  <textarea
+                    value={chartPrompt}
+                    onChange={(event) => setChartPrompt(event.target.value)}
+                    placeholder={t.chartPrompt}
+                    rows={3}
+                  />
+                  <div className="chart-form-row">
+                    <select value={chartKind} onChange={(event) => setChartKind(event.target.value as ChartKind)}>
+                      <option value="bar">Bar</option>
+                      <option value="line">Line</option>
+                      <option value="pie">Pie</option>
+                      <option value="table">Table</option>
+                    </select>
+                    <button disabled={busy}><Plus size={17} />{t.createChart}</button>
+                  </div>
+                  <small>{t.chartExample}</small>
+                </form>
+                {charts.length === 0 ? (
+                  <p className="empty-mini">{t.noCharts}</p>
+                ) : (
+                  <div className="custom-chart-grid">
+                    {charts.map((chart) => (
+                      <CustomChartCard key={chart.id} chart={chart} onDelete={() => removeChart(chart.id)} />
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 className="wide-button"
                 onClick={() => downloadPdf(
                   t.analytics,
-                  `Applications: ${career.length}\nResponse rate: ${careerResponseRate(career)}%\nInterviews: ${career.filter((item) => item.status === "interview").length}`,
-                  career.map((item) => ({ company: item.company, role: item.role, status: item.status, date: item.date }))
+                  `Applications: ${career.length}\nResponse rate: ${careerResponseRate(career)}%\nInterviews: ${career.filter((item) => item.status === "interview").length}\n\nCustom charts:\n${charts.map((chart) => `${chart.title}: ${chart.labels.map((label, index) => `${label}=${chart.values[index]}`).join(", ")}`).join("\n")}`,
+                  [
+                    ...career.map((item) => ({ company: item.company, role: item.role, status: item.status, date: item.date })),
+                    ...charts.flatMap((chart) => chart.labels.map((label, index) => ({ chart: chart.title, label, value: chart.values[index], unit: chart.unit ?? "" })))
+                  ]
                 )}
               >
                 <Download size={17} />{t.downloadPdf}
@@ -1799,6 +1884,93 @@ function Panel({
       <div className="panel-body">{children}</div>
     </section>
   );
+}
+
+function CustomChartCard({ chart, onDelete }: { chart: CustomChart; onDelete: () => void }) {
+  const max = Math.max(...chart.values.map((value) => Math.abs(value)), 1);
+  const total = chart.values.reduce((sum, value) => sum + Math.max(0, value), 0) || 1;
+  const linePoints = chart.values.map((value, index) => {
+    const x = chart.values.length === 1 ? 50 : (index / (chart.values.length - 1)) * 100;
+    const y = 92 - (Math.max(0, value) / max) * 78;
+    return `${x},${y}`;
+  }).join(" ");
+  const pieBackground = buildPieGradient(chart.values, total);
+
+  return (
+    <article className="custom-chart-card">
+      <div className="custom-chart-head">
+        <div>
+          <strong>{chart.title}</strong>
+          <small>{new Date(chart.createdAt).toLocaleString()}</small>
+        </div>
+        <button onClick={onDelete} title="Delete"><Trash2 size={15} /></button>
+      </div>
+      {chart.description && <p>{chart.description}</p>}
+      {chart.kind === "bar" && (
+        <div className="bar-chart">
+          {chart.labels.map((label, index) => (
+            <div className="bar-row" key={`${chart.id}-${label}-${index}`}>
+              <span>{label}</span>
+              <div><i style={{ width: `${Math.max(4, (Math.abs(chart.values[index]) / max) * 100)}%` }} /></div>
+              <strong>{formatChartValue(chart.values[index], chart.unit)}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+      {chart.kind === "line" && (
+        <div className="line-chart">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label={chart.title}>
+            <polyline points={linePoints} />
+          </svg>
+          <div>
+            {chart.labels.map((label, index) => (
+              <span key={`${chart.id}-line-${label}-${index}`}>{label}<b>{formatChartValue(chart.values[index], chart.unit)}</b></span>
+            ))}
+          </div>
+        </div>
+      )}
+      {chart.kind === "pie" && (
+        <div className="pie-chart-wrap">
+          <div className="pie-chart" style={{ background: pieBackground }} />
+          <div className="pie-legend">
+            {chart.labels.map((label, index) => (
+              <span key={`${chart.id}-pie-${label}-${index}`}><i style={{ background: chartColor(index) }} />{label}: {formatChartValue(chart.values[index], chart.unit)}</span>
+            ))}
+          </div>
+        </div>
+      )}
+      {chart.kind === "table" && (
+        <div className="data-table">
+          {chart.labels.map((label, index) => (
+            <div key={`${chart.id}-table-${label}-${index}`}>
+              <span>{label}</span>
+              <strong>{formatChartValue(chart.values[index], chart.unit)}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function buildPieGradient(values: number[], total: number) {
+  let current = 0;
+  const stops = values.map((value, index) => {
+    const start = current;
+    current += (Math.max(0, value) / total) * 100;
+    return `${chartColor(index)} ${start}% ${current}%`;
+  });
+  return `conic-gradient(${stops.join(", ")})`;
+}
+
+function chartColor(index: number) {
+  const colors = ["#2dd4bf", "#6d5dfc", "#f59e0b", "#38bdf8", "#22c55e", "#fb7185", "#a78bfa", "#14b8a6"];
+  return colors[index % colors.length];
+}
+
+function formatChartValue(value: number, unit?: string) {
+  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return `${formatted}${unit ? ` ${unit}` : ""}`;
 }
 
 function MessageActions({ message }: { message: Message }) {

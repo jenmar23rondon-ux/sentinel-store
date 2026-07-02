@@ -1,4 +1,4 @@
-import type { ActionItem, ActionType, ActivityEvent, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem, WorldPulse } from "../types";
+import type { ActionItem, ActionType, ActivityEvent, ChartKind, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem, WorldPulse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
 
@@ -28,6 +28,7 @@ export const api = {
     actions: ActionItem[];
     career: JobApplication[];
     activity: ActivityEvent[];
+    charts: CustomChart[];
     notificationSettings: NotificationSettings;
     providers: Record<string, boolean>;
     integrations: Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>;
@@ -118,6 +119,14 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch)
     }),
+
+  createChart: (prompt: string, input?: { title?: string; kind?: ChartKind }) =>
+    request<CustomChart>("/api/charts", {
+      method: "POST",
+      body: JSON.stringify({ prompt, ...input })
+    }),
+
+  deleteChart: (id: string) => request<void>(`/api/charts/${id}`, { method: "DELETE" }),
 
   worldPulse: (lang = "es") => request<WorldPulse>(`/api/world-pulse?lang=${encodeURIComponent(lang)}`),
 

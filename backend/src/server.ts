@@ -11,7 +11,7 @@ import { env } from "./env.js";
 import { analyzeImage, generateAssistantReply, providerStatus } from "./providers.js";
 import { webSearch } from "./search.js";
 import { db } from "./store.js";
-import type { ActionItem, ActionType, ProviderName } from "./types.js";
+import type { ActionItem, ActionType, ChartKind, CustomChart, ProviderName } from "./types.js";
 
 const app = express();
 
@@ -33,6 +33,7 @@ app.get("/api/bootstrap", async (_req, res) => {
     actions: store.actions,
     career: store.career,
     activity: store.activity,
+    charts: store.charts,
     notificationSettings: store.notificationSettings,
     providers: providerStatus(),
     integrations: integrationStatus()
@@ -60,6 +61,7 @@ app.post("/api/chat", async (req, res, next) => {
     await autoCaptureMemory(body.message);
     await autoCaptureTask(body.message);
     const plannedAction = await autoCreateAction(body.message);
+    const plannedChart = await autoCreateChart(body.message);
 
     const store = await db.snapshot();
     const recentMessages = store.messages
@@ -85,11 +87,14 @@ app.post("/api/chat", async (req, res, next) => {
     const actionNote = plannedAction
       ? `\n\nAccion preparada: ${plannedAction.title}. Queda pendiente de aprobacion en Action Center antes de ejecutarla.`
       : "";
+    const chartNote = plannedChart
+      ? `\n\nGrafica creada: ${plannedChart.title}. La puedes ver en Estadisticas.`
+      : "";
 
     const assistantMessage = await db.addMessage({
       conversationId: conversation.id,
       role: "assistant",
-      content: `${reply.content}${actionNote}`,
+      content: `${reply.content}${actionNote}${chartNote}`,
       provider: reply.provider
     });
 
@@ -394,6 +399,32 @@ app.patch("/api/notifications/settings", async (req, res) => {
   res.json(settings);
 });
 
+app.get("/api/charts", async (_req, res) => {
+  res.json((await db.snapshot()).charts);
+});
+
+app.post("/api/charts", async (req, res, next) => {
+  try {
+    const body = z.object({
+      prompt: z.string().min(2),
+      title: z.string().optional(),
+      kind: z.enum(["bar", "line", "pie", "table"]).optional()
+    }).parse(req.body);
+    const chart = buildChartFromPrompt(body.prompt, { title: body.title, kind: body.kind });
+    const item = await db.createChart(chart);
+    broadcast({ type: "charts:created", payload: item });
+    res.status(201).json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/charts/:id", async (req, res) => {
+  await db.deleteChart(req.params.id);
+  broadcast({ type: "charts:deleted", payload: { id: req.params.id } });
+  res.status(204).send();
+});
+
 app.get("/api/integrations", (_req, res) => {
   res.json(integrationStatus());
 });
@@ -635,6 +666,108 @@ async function autoCreateAction(message: string): Promise<ActionItem | null> {
     source: "chat",
     requiresApproval: true
   });
+}
+
+async function autoCreateChart(message: string): Promise<CustomChart | null> {
+  if (!/(gr[aÃ¡]fica|grafico|chart|estad[iÃ­]stica|tabla|visualiza|visualizar|control de|seguimiento de)/i.test(message)) return null;
+  const chart = buildChartFromPrompt(message);
+  return db.createChart(chart);
+}
+
+function buildChartFromPrompt(message: string, override: { title?: string; kind?: ChartKind } = {}): Omit<CustomChart, "id" | "createdAt" | "updatedAt"> {
+  const parsed = parseChartData(message);
+  const fallback = parsed.labels.length >= 2 ? parsed : fallbackChartData(message);
+  const title = override.title ?? inferChartTitle(message);
+  const kind = override.kind ?? inferChartKind(message, fallback.labels.length);
+
+  return {
+    title,
+    description: `Creada desde: "${message.replace(/\s+/g, " ").slice(0, 140)}"`,
+    kind,
+    labels: fallback.labels,
+    values: fallback.values,
+    unit: fallback.unit,
+    sourcePrompt: message
+  };
+}
+
+function parseChartData(message: string) {
+  const labels: string[] = [];
+  const values: number[] = [];
+  let unit = "";
+  const colonIndex = message.indexOf(":");
+  const dataText = colonIndex > -1 && /(gr[aÃ¡]fica|grafico|chart|tabla|estad[iÃ­]stica|visualiza|visualizar)/i.test(message.slice(0, colonIndex))
+    ? message.slice(colonIndex + 1)
+    : message;
+  const chunks = dataText
+    .replace(/\n/g, ",")
+    .split(/[,;|]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  for (const chunk of chunks) {
+    const labelFirst = chunk.match(/^(.{2,42}?)(?:\:|=|\s+-\s+|\s+)\s*(-?\d+(?:[.,]\d+)?)(?:\s*([%A-Za-zÃ¡Ã©Ã­Ã³ÃºÃ±]+))?$/i);
+    const numberFirst = chunk.match(/^(-?\d+(?:[.,]\d+)?)(?:\s*([%A-Za-zÃ¡Ã©Ã­Ã³ÃºÃ±]+))?\s+(?:en|de|para|for)?\s*(.{2,42})$/i);
+    const match = labelFirst ?? numberFirst;
+    if (!match) continue;
+
+    const rawLabel = labelFirst ? match[1] : match[3];
+    const rawValue = labelFirst ? match[2] : match[1];
+    const rawUnit = labelFirst ? match[3] : match[2];
+    const value = Number(rawValue.replace(",", "."));
+    if (!Number.isFinite(value)) continue;
+    labels.push(cleanChartLabel(rawLabel));
+    values.push(value);
+    if (!unit && rawUnit) unit = rawUnit.trim();
+  }
+
+  return { labels, values, unit };
+}
+
+function fallbackChartData(message: string) {
+  const lower = message.toLowerCase();
+  if (/(vacante|aplicaci[oÃ³]n|carrera|empleo|trabajo|interview|entrevista)/i.test(lower)) {
+    return { labels: ["Aplicadas", "Screening", "Entrevistas", "Ofertas", "Rechazadas"], values: [0, 0, 0, 0, 0], unit: "" };
+  }
+  if (/(tiempo|hora|estudio|gym|apps|habito|h[Ã¡a]bito)/i.test(lower)) {
+    return { labels: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"], values: [0, 0, 0, 0, 0, 0, 0], unit: "h" };
+  }
+  return { labels: ["Dato 1", "Dato 2", "Dato 3"], values: [0, 0, 0], unit: "" };
+}
+
+function inferChartKind(message: string, count: number): ChartKind {
+  if (/(tabla|table)/i.test(message)) return "table";
+  if (/(torta|pastel|pie|porcentaje|distribuci[oÃ³]n)/i.test(message)) return "pie";
+  if (/(linea|l[iÃ­]nea|progreso|evoluci[oÃ³]n|semana|mes|diario|daily|weekly)/i.test(message)) return "line";
+  if (count <= 3 && /(%|porcentaje|distribuci[oÃ³]n)/i.test(message)) return "pie";
+  return "bar";
+}
+
+function inferChartTitle(message: string) {
+  const colonIndex = message.indexOf(":");
+  if (colonIndex > -1) {
+    const beforeColon = message.slice(0, colonIndex);
+    if (/(gr[aÃ¡]fica|grafico|chart|tabla|estad[iÃ­]stica)/i.test(beforeColon)) {
+      return chartTitleFromText(beforeColon);
+    }
+  }
+  const match = message.match(/(?:gr[aÃ¡]fica|grafico|chart|tabla|estad[iÃ­]stica)s?\s+(?:de|sobre|para)?\s*(.{4,64})/i);
+  const text = match?.[1] ?? message;
+  return cleanChartLabel(text.replace(/[,;].*$/, "")).slice(0, 64) || "Grafica personalizada";
+}
+
+function chartTitleFromText(text: string) {
+  const cleaned = cleanChartLabel(text)
+    .replace(/^(?:una|un)\s+/i, "")
+    .replace(/^(?:gr[aÃ¡]fica|grafico|chart|tabla|estad[iÃ­]stica)s?\s+(?:de|sobre|para)?\s*/i, "");
+  return cleanChartLabel(cleaned).slice(0, 64) || "Grafica personalizada";
+}
+
+function cleanChartLabel(value: string) {
+  return value
+    .replace(/^(crea|crear|haz|hacer|muestra|visualiza|visualizar|una|un|de|sobre|para)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function detectActionIntent(message: string): Omit<ActionItem, "id" | "status" | "source" | "requiresApproval" | "createdAt" | "updatedAt"> | null {

@@ -408,7 +408,7 @@ button {
   z-index: 30;
   min-width: 190px;
   max-width: min(190px, calc(100vw - 28px));
-  display: grid;
+  display: none;
   gap: 6px;
   padding: 8px;
   border: 1px solid var(--border);
@@ -421,10 +421,6 @@ button {
   transform-origin: top left;
   transition: opacity 160ms ease, transform 160ms ease;
   overflow: hidden;
-}
-
-.language-picker:not(.open) .language-menu {
-  display: none;
 }
 
 .language-picker.open .language-menu {
@@ -1757,6 +1753,263 @@ textarea:focus {
   white-space: nowrap;
 }
 
+.smart-chart-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px;
+  margin-bottom: 12px;
+  background: var(--surface);
+}
+
+.mini-title {
+  margin-bottom: 0;
+}
+
+.mini-title h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.smart-chart-form {
+  display: grid;
+  gap: 8px;
+}
+
+.smart-chart-form small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.chart-form-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.35fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.chart-form-row select,
+.chart-form-row button {
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.chart-form-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  font-weight: 800;
+  transition: transform 160ms ease, filter 160ms ease;
+}
+
+.chart-form-row button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+}
+
+.custom-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.custom-chart-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px;
+  background: var(--surface-2);
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.custom-chart-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+.custom-chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.custom-chart-head div {
+  display: grid;
+  gap: 3px;
+}
+
+.custom-chart-head strong,
+.custom-chart-head small,
+.custom-chart-card p,
+.bar-row span,
+.pie-legend span,
+.data-table span {
+  overflow-wrap: anywhere;
+}
+
+.custom-chart-head small,
+.custom-chart-card p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.custom-chart-head button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  transition: transform 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.custom-chart-head button:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  transform: translateY(-1px);
+}
+
+.bar-chart {
+  display: grid;
+  gap: 8px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(64px, 0.85fr) minmax(0, 1.35fr) max-content;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.bar-row div {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+.bar-row i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 320ms ease;
+}
+
+.line-chart {
+  display: grid;
+  gap: 8px;
+}
+
+.line-chart svg {
+  width: 100%;
+  height: 120px;
+  border-radius: 10px;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px),
+    var(--surface);
+  background-size: 100% 25%, 25% 100%;
+  border: 1px solid var(--border);
+}
+
+.line-chart polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line-chart div,
+.pie-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.line-chart span,
+.pie-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.line-chart b {
+  color: var(--text);
+}
+
+.pie-chart-wrap {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.pie-chart {
+  width: 118px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  box-shadow: inset -16px -10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.pie-legend {
+  align-content: center;
+}
+
+.pie-legend i {
+  width: 9px;
+  min-width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.data-table {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.data-table div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.data-table div:first-child {
+  border-top: 0;
+}
+
+.data-table strong {
+  white-space: nowrap;
+}
+
 @keyframes pinPulse {
   0%, 100% {
     transform: translate(-50%, -50%) scale(0.92);
@@ -1865,6 +2118,8 @@ textarea:focus {
 
   .control-cluster {
     grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     justify-content: stretch;
   }
 
@@ -1873,8 +2128,25 @@ textarea:focus {
   .language-trigger,
   .theme-toggle,
   .install-button {
-    flex: 1;
+    width: 100%;
+    min-width: 0;
+    flex: none;
     justify-content: center;
+  }
+
+  .install-button {
+    grid-column: 1 / -1;
+  }
+
+  .control-select select {
+    width: 100%;
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  .theme-toggle span,
+  .install-button span {
+    white-space: nowrap;
   }
 
   .metric-grid {
@@ -1906,7 +2178,9 @@ textarea:focus {
   .world-layout,
   .market-grid,
   .notebook-grid,
-  .studio-grid {
+  .studio-grid,
+  .custom-chart-grid,
+  .pie-chart-wrap {
     grid-template-columns: 1fr;
   }
 

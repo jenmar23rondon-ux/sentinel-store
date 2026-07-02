@@ -104,6 +104,21 @@ export interface NotificationSettings {
   locationInsights: boolean;
 }
 
+export type ChartKind = "bar" | "line" | "pie" | "table";
+
+export interface CustomChart {
+  id: string;
+  title: string;
+  description?: string;
+  kind: ChartKind;
+  labels: string[];
+  values: number[];
+  unit?: string;
+  sourcePrompt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ToolCall {
   id: string;
   name: string;
@@ -121,6 +136,7 @@ export interface Store {
   actions: ActionItem[];
   career: JobApplication[];
   activity: ActivityEvent[];
+  charts: CustomChart[];
   notificationSettings: NotificationSettings;
   toolCalls: ToolCall[];
 }

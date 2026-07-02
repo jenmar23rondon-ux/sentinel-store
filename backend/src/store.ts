@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import { env } from "./env.js";
-import type { ActionItem, ActivityEvent, Conversation, JobApplication, MemoryItem, Message, NotificationSettings, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
+import type { ActionItem, ActivityEvent, Conversation, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
 
 const initialStore: Store = {
   conversations: [],
@@ -13,6 +13,7 @@ const initialStore: Store = {
   actions: [],
   career: [],
   activity: [],
+  charts: [],
   notificationSettings: {
     enabled: true,
     activityAlerts: true,
@@ -41,6 +42,7 @@ async function ensureStore(): Promise<Store> {
     cache.actions ??= [];
     cache.career ??= [];
     cache.activity ??= [];
+    cache.charts ??= [];
     cache.notificationSettings ??= structuredClone(initialStore.notificationSettings);
     cache.toolCalls ??= [];
   } catch {
@@ -245,6 +247,26 @@ export const db = {
     store.notificationSettings = { ...store.notificationSettings, ...patch };
     await persist();
     return store.notificationSettings;
+  },
+
+  async createChart(input: Omit<CustomChart, "id" | "createdAt" | "updatedAt">) {
+    const store = await ensureStore();
+    const now = new Date().toISOString();
+    const item: CustomChart = {
+      ...input,
+      id: nanoid(),
+      createdAt: now,
+      updatedAt: now
+    };
+    store.charts.unshift(item);
+    await persist();
+    return item;
+  },
+
+  async deleteChart(id: string) {
+    const store = await ensureStore();
+    store.charts = store.charts.filter((item) => item.id !== id);
+    await persist();
   },
 
   async addToolCall(call: Omit<ToolCall, "id" | "createdAt">) {

@@ -108,6 +108,21 @@ export interface NotificationSettings {
   locationInsights: boolean;
 }
 
+export type ChartKind = "bar" | "line" | "pie" | "table";
+
+export interface CustomChart {
+  id: string;
+  title: string;
+  description?: string;
+  kind: ChartKind;
+  labels: string[];
+  values: number[];
+  unit?: string;
+  sourcePrompt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorldNewsItem {
   country: string;
   city: string;

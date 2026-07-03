@@ -20,37 +20,38 @@ const systemPrompt = `Eres Aether, un asistente personal privado para productivi
 
 export function providerStatus() {
   return {
-    openai: Boolean(env.openaiApiKey),
-    claude: Boolean(env.anthropicApiKey),
-    gemini: Boolean(env.geminiApiKey),
+    openai: hasUsableKey(env.openaiApiKey),
+    claude: hasUsableKey(env.anthropicApiKey),
+    gemini: hasUsableKey(env.geminiApiKey),
     ollama: Boolean(env.ollamaBaseUrl),
     local: true
   };
 }
 
 export async function generateAssistantReply(input: GenerateInput) {
-  const selected = resolveProvider(input.provider);
   const messages = [
     { role: "system", content: buildSystem(input.memoryContext, input.taskContext, input.webContext) },
     ...input.messages.map((item) => ({ role: item.role, content: item.content }))
   ];
+  const providerOrder = resolveProviderOrder(input.provider);
+  const failures: string[] = [];
 
-  try {
-    if (selected === "openai") return { provider: selected, content: await openai(messages) };
-    if (selected === "claude") return { provider: selected, content: await claude(messages) };
-    if (selected === "gemini") return { provider: selected, content: await gemini(messages) };
-    if (selected === "ollama") return { provider: selected, content: await ollama(messages) };
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "error desconocido";
-    return {
-      provider: "local",
-      content: `${localReply(withWebContext(input.messages.at(-1)?.content ?? "", input.webContext), input.memoryContext, input.taskContext)}\n\nNota: intente usar ${selected}, pero fallo: ${detail}`
-    };
+  for (const selected of providerOrder) {
+    try {
+      if (selected === "openai") return { provider: selected, content: await openai(messages) };
+      if (selected === "claude") return { provider: selected, content: await claude(messages) };
+      if (selected === "gemini") return { provider: selected, content: await gemini(messages) };
+      if (selected === "ollama") return { provider: selected, content: await ollama(messages) };
+    } catch (error) {
+      failures.push(friendlyProviderFailure(selected, error));
+    }
   }
 
+  const localContent = localReply(withWebContext(input.messages.at(-1)?.content ?? "", input.webContext), input.memoryContext, input.taskContext);
+  const visibleFailure = input.provider === "auto" ? "" : failures.find((item) => item.includes("API key")) ?? failures[0] ?? "";
   return {
     provider: "local",
-    content: localReply(withWebContext(input.messages.at(-1)?.content ?? "", input.webContext), input.memoryContext, input.taskContext)
+    content: visibleFailure ? `${localContent}\n\nNota: ${visibleFailure}` : localContent
   };
 }
 
@@ -77,11 +78,41 @@ export async function analyzeImage(input: VisionInput) {
 }
 
 function resolveProvider(provider: ProviderName): ProviderName {
-  if (provider !== "auto") return provider;
-  if (env.openaiApiKey) return "openai";
-  if (env.anthropicApiKey) return "claude";
-  if (env.geminiApiKey) return "gemini";
-  return "local";
+  return resolveProviderOrder(provider)[0] ?? "local";
+}
+
+function resolveProviderOrder(provider: ProviderName): ProviderName[] {
+  const configured: ProviderName[] = [];
+  if (hasUsableKey(env.openaiApiKey)) configured.push("openai");
+  if (hasUsableKey(env.anthropicApiKey)) configured.push("claude");
+  if (hasUsableKey(env.geminiApiKey)) configured.push("gemini");
+  if (env.ollamaBaseUrl) configured.push("ollama");
+
+  if (provider === "auto") return configured;
+  if (provider === "local") return [];
+  return [provider, ...configured.filter((item) => item !== provider)];
+}
+
+function hasUsableKey(value?: string): value is string {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 20
+    && !normalized.includes("tu_")
+    && !normalized.includes("your_")
+    && !normalized.includes("example")
+    && !normalized.includes("xxxx")
+    && !normalized.includes("****");
+}
+
+function friendlyProviderFailure(provider: ProviderName, error: unknown) {
+  const detail = error instanceof Error ? error.message : "";
+  if (/invalid[_ -]?api[_ -]?key|incorrect api key|unauthorized|401/i.test(detail)) {
+    return `no pude usar ${provider} porque la API key no es valida. Revísala en Railway/backend .env o cambia el modelo a Auto/Local mientras tanto.`;
+  }
+  if (/no esta configurada|not configured/i.test(detail)) {
+    return `${provider} no esta configurado todavia.`;
+  }
+  return `no pude usar ${provider} en este momento, asi que respondi con busqueda web y modo local.`;
 }
 
 function buildSystem(memoryContext: string, taskContext: string, webContext?: string) {
@@ -93,12 +124,13 @@ function withWebContext(message: string, webContext?: string) {
 }
 
 async function openai(messages: { role: string; content: string }[]) {
-  if (!env.openaiApiKey) throw new Error("OPENAI_API_KEY no esta configurada");
+  if (!hasUsableKey(env.openaiApiKey)) throw new Error("OPENAI_API_KEY no esta configurada");
+  const apiKey = env.openaiApiKey;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.openaiApiKey}`
+      Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model: env.openaiModel,
@@ -112,14 +144,15 @@ async function openai(messages: { role: string; content: string }[]) {
 }
 
 async function claude(messages: { role: string; content: string }[]) {
-  if (!env.anthropicApiKey) throw new Error("ANTHROPIC_API_KEY no esta configurada");
+  if (!hasUsableKey(env.anthropicApiKey)) throw new Error("ANTHROPIC_API_KEY no esta configurada");
+  const apiKey = env.anthropicApiKey;
   const system = messages.find((item) => item.role === "system")?.content ?? systemPrompt;
   const userMessages = messages.filter((item) => item.role !== "system");
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": env.anthropicApiKey,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
@@ -138,8 +171,9 @@ async function claude(messages: { role: string; content: string }[]) {
 }
 
 async function gemini(messages: { role: string; content: string }[]) {
-  if (!env.geminiApiKey) throw new Error("GEMINI_API_KEY no esta configurada");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.geminiModel}:generateContent?key=${env.geminiApiKey}`;
+  if (!hasUsableKey(env.geminiApiKey)) throw new Error("GEMINI_API_KEY no esta configurada");
+  const apiKey = env.geminiApiKey;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.geminiModel}:generateContent?key=${apiKey}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -171,12 +205,13 @@ async function ollama(messages: { role: string; content: string }[]) {
 }
 
 async function openaiVision(input: VisionInput) {
-  if (!env.openaiApiKey) throw new Error("OPENAI_API_KEY no esta configurada");
+  if (!hasUsableKey(env.openaiApiKey)) throw new Error("OPENAI_API_KEY no esta configurada");
+  const apiKey = env.openaiApiKey;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${env.openaiApiKey}`
+      Authorization: `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model: env.openaiModel,
@@ -199,13 +234,14 @@ async function openaiVision(input: VisionInput) {
 }
 
 async function claudeVision(input: VisionInput) {
-  if (!env.anthropicApiKey) throw new Error("ANTHROPIC_API_KEY no esta configurada");
+  if (!hasUsableKey(env.anthropicApiKey)) throw new Error("ANTHROPIC_API_KEY no esta configurada");
+  const apiKey = env.anthropicApiKey;
   const mediaType = input.mimeType === "image/png" ? "image/png" : input.mimeType === "image/gif" ? "image/gif" : "image/jpeg";
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": env.anthropicApiKey,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
@@ -229,8 +265,9 @@ async function claudeVision(input: VisionInput) {
 }
 
 async function geminiVision(input: VisionInput) {
-  if (!env.geminiApiKey) throw new Error("GEMINI_API_KEY no esta configurada");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.geminiModel}:generateContent?key=${env.geminiApiKey}`;
+  if (!hasUsableKey(env.geminiApiKey)) throw new Error("GEMINI_API_KEY no esta configurada");
+  const apiKey = env.geminiApiKey;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${env.geminiModel}:generateContent?key=${apiKey}`;
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -281,7 +318,7 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
       : "Puedo usar internet si el backend tiene salida a la red. Para busqueda web de mejor calidad configura SERPER_API_KEY en Railway; si no, uso una busqueda fallback.";
   }
   if (webContext) {
-    return `Esto encontre en la web y lo resumo para ti:\n\n${webContext}\n\nRecomendacion: revisa las fuentes enlazadas si vas a tomar una decision importante, porque la informacion de internet puede cambiar rapido.`;
+    return webGroundedReply(lastUserMessage, webContext);
   }
   if (lower.includes("recuerda") || lower.includes("memoria")) {
     return "Puedo ayudarte a convertir eso en memoria persistente. Usa el panel Memoria o escribe la idea completa y la guardamos como dato importante para tus proximas conversaciones.";
@@ -340,6 +377,76 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
     ].join("\n");
   }
   return `Estoy listo en modo local. Puedo responder guias practicas, crear tareas, memorias, acciones y graficas. Para respuestas con IA avanzada conecta OPENAI_API_KEY, GEMINI_API_KEY o ANTHROPIC_API_KEY en Railway.\n\nContexto actual:\n${memoryContext || "- Sin memoria guardada"}\n${taskContext || "- Sin tareas abiertas"}`;
+}
+
+function webGroundedReply(message: string, webContext: string) {
+  const question = message.split("\n\n[WEB_CONTEXT]")[0].replace(/[¿?]/g, "").trim();
+  const sources = extractSources(webContext);
+  const compactContext = webContext
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("Fuente:"))
+    .map((line) => line.replace(/^\s*\d+\.\s*/, "").trim())
+    .join("\n")
+    .replace(/\s+/g, " ")
+    .slice(0, 1200);
+
+  return [
+    `Claro. Sobre "${question}", esto es lo mas importante:`,
+    "",
+    buildPracticalAnswer(question, compactContext),
+    "",
+    sources.length ? "Fuentes consultadas:" : "",
+    ...sources.map((source, index) => `${index + 1}. ${source}`)
+  ].filter(Boolean).join("\n");
+}
+
+function buildPracticalAnswer(question: string, context: string) {
+  const lower = question.toLowerCase();
+  if (/(concentraci[oó]n|concentracion|enfocar|focus|productividad|estudiar|aprender)/i.test(lower)) {
+    return [
+      "La forma mas efectiva de mejorar la concentracion suele ser combinar menos distracciones, bloques de trabajo medibles y descanso real.",
+      "",
+      "1. Define una sola tarea antes de empezar; si hay varias, escoge la primera accion de 10 minutos.",
+      "2. Usa bloques de 25, 45 o 50 minutos segun tu energia. No todos rinden igual con Pomodoro estricto.",
+      "3. Quita notificaciones, deja el telefono lejos y usa pantalla completa para la herramienta principal.",
+      "4. Descansa con movimiento, agua o respiracion; evita cambiar a redes sociales porque no descansa la mente.",
+      "5. Registra tiempo enfocado vs. tiempo distraido. Aether puede convertir eso en graficas para ver progreso.",
+      "",
+      "Plan rapido para hoy: 2 bloques de 45 minutos, una sola meta por bloque, y al final anota que funciono y que te distrajo."
+    ].join("\n");
+  }
+
+  if (/(mejor|recomienda|como|c[oó]mo|plan|ayuda)/i.test(lower)) {
+    return [
+      "Mi respuesta practica seria:",
+      "",
+      "1. Empieza por la opcion con mayor impacto y menor friccion.",
+      "2. Divide la decision en criterios: tiempo, costo, dificultad, beneficio y riesgo.",
+      "3. Haz una prueba pequena antes de comprometerte por completo.",
+      "4. Guarda el resultado como nota, tarea o grafica para medir si realmente funciono.",
+      "",
+      `Contexto encontrado: ${context || "no encontre un resumen amplio, pero puedo ayudarte a estructurarlo."}`
+    ].join("\n");
+  }
+
+  return [
+    "Resumen:",
+    context || "No encontre suficiente contexto en la busqueda, pero puedo ayudarte a desglosarlo.",
+    "",
+    "Como usarlo:",
+    "1. Identifica la idea principal.",
+    "2. Revisa si aplica a tu caso.",
+    "3. Convierte la siguiente accion en tarea o nota dentro de Aether."
+  ].join("\n");
+}
+
+function extractSources(webContext: string) {
+  return webContext
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("Fuente: "))
+    .map((line) => line.replace("Fuente: ", ""))
+    .slice(0, 4);
 }
 
 function answerKnownTopic(lower: string) {

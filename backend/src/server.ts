@@ -503,8 +503,8 @@ async function maybeBuildWebContext(message: string) {
 
 function shouldUseWebSearch(message: string) {
   const lower = message.toLowerCase();
-  if (/(crea una grafica|gr[aÃ¡]fica|tarea:|pendiente:|recuerda que|recuerda:|envia|enviar|agenda|agendar)/i.test(lower)) return false;
-  return /(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|d[oÃ³]lar|clima|quien|qu[eÃ©] es|c[oÃ³]mo funciona|me puedes decir|dime sobre|explica|mejor para|beneficios|riesgos|ultim[oa]s?|latest|news|today|current|\?)/i.test(message);
+  if (/(crea una grafica|grafica|gráfica|tarea:|pendiente:|recuerda que|recuerda:|envia|enviar|agenda|agendar)/i.test(lower)) return false;
+  return /(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|dólar|clima|quien|qué es|que es|cómo funciona|como funciona|me puedes decir|dime sobre|explica|mejor|recomienda|beneficios|riesgos|concentracion|concentración|productividad|estudiar|aprender|salud|tecnologia|tecnología|programacion|programación|ciberseguridad|ultimas|últimas|latest|news|today|current|\?)/i.test(message);
 }
 
 async function fetchWorldNews(lang: "es" | "en" | "pt" | "fr") {

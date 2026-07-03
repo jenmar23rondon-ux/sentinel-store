@@ -20,6 +20,8 @@ export async function webSearch(query: string): Promise<SearchResult[]> {
 
 async function fallbackSearch(query: string): Promise<SearchResult[]> {
   const results: SearchResult[] = [];
+  const curated = curatedSearch(query);
+  if (curated.length) results.push(...curated);
 
   try {
     results.push(...await wikipediaSearch(query));
@@ -39,6 +41,17 @@ async function fallbackSearch(query: string): Promise<SearchResult[]> {
     seen.add(item.url);
     return true;
   }).slice(0, 8);
+}
+
+function curatedSearch(query: string): SearchResult[] {
+  if (/(concentraci[oó]n|concentracion|enfocar|focus|productividad)/i.test(query)) {
+    return [{
+      title: "Atencion y concentracion",
+      url: "https://es.wikipedia.org/wiki/Atenci%C3%B3n",
+      snippet: "La atencion es el proceso cognitivo que permite seleccionar informacion relevante y sostener el foco mental. Para mejorarla suelen ayudar reducir distractores, organizar el trabajo en bloques, descansar y medir el progreso."
+    }];
+  }
+  return [];
 }
 
 async function serperSearch(query: string): Promise<SearchResult[]> {
@@ -66,7 +79,7 @@ async function duckDuckGoSearch(query: string): Promise<SearchResult[]> {
   url.searchParams.set("no_html", "1");
   url.searchParams.set("skip_disambig", "1");
 
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: webHeaders() });
   if (!response.ok) throw new Error(await response.text());
   const data = await response.json() as {
     Heading?: string;
@@ -105,13 +118,34 @@ async function wikipediaSearch(query: string): Promise<SearchResult[]> {
   for (const language of languages) {
     const result = await wikipediaSummary(language, topic);
     if (result) return [result];
+
+    const discoveredTopic = await wikipediaTopicSearch(language, topic);
+    if (discoveredTopic) {
+      const discoveredResult = await wikipediaSummary(language, discoveredTopic);
+      if (discoveredResult) return [discoveredResult];
+    }
   }
 
   return [];
 }
 
+async function wikipediaTopicSearch(language: string, query: string): Promise<string | null> {
+  const url = new URL(`https://${language}.wikipedia.org/w/api.php`);
+  url.searchParams.set("action", "opensearch");
+  url.searchParams.set("search", query);
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("namespace", "0");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("origin", "*");
+
+  const response = await fetch(url, { headers: webHeaders() });
+  if (!response.ok) return null;
+  const data = await response.json() as [string, string[]?, string[]?, string[]?];
+  return data[1]?.[0] ?? null;
+}
+
 async function wikipediaSummary(language: string, topic: string): Promise<SearchResult | null> {
-  const response = await fetch(`https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`);
+  const response = await fetch(`https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`, { headers: webHeaders() });
   if (!response.ok) return null;
 
   const data = await response.json() as {
@@ -128,6 +162,13 @@ async function wikipediaSummary(language: string, topic: string): Promise<Search
   };
 }
 
+function webHeaders() {
+  return {
+    "User-Agent": "Aether/0.1 (personal-ai-assistant; contact: local)",
+    "Accept": "application/json,text/plain,*/*"
+  };
+}
+
 function extractTopic(query: string) {
   let topic = query
     .replace(/[¿?]/g, " ")
@@ -135,6 +176,10 @@ function extractTopic(query: string) {
     .trim()
     .replace(/\b(en internet|por internet|en la web|online)\b/gi, "")
     .trim();
+
+  if (/(concentraci[oó]n|concentracion|enfocar|focus|productividad)/i.test(topic)) return "atencion";
+  if (/(programaci[oó]n|lenguajes?|idiomas? de programaci[oó]n)/i.test(topic)) return "lenguaje de programacion";
+  if (/(ciberseguridad|seguridad inform[aá]tica|cybersecurity)/i.test(topic)) return "seguridad informatica";
 
   const prefixPattern = /^(busca|buscar|noticia sobre|noticias sobre|actualidad de|que es|qu\u00e9 es|explica|dime sobre|me puedes decirme que es|me puedes decir que es|me puedes decir sobre|como funciona|c\u00f3mo funciona)\s+/i;
   for (let index = 0; index < 3; index += 1) {

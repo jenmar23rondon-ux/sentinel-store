@@ -179,7 +179,7 @@ app.get("/api/world-pulse", async (req, res) => {
   const [news, currencies, gold] = await Promise.all([
     fetchWorldNews(lang).catch(() => fallbackNews()),
     fetchCurrencies().catch(() => fallbackCurrencies()),
-    fetchGold().catch(() => ({ label: "Gold futures USD/oz", value: "Unavailable", change: "Yahoo Finance fallback failed" }))
+    fetchGold().catch(() => ({ label: "Gold futures USD/oz", value: "Unavailable", cop: undefined, change: "Yahoo Finance fallback failed" }))
   ]);
   const bitcoin = await fetchBitcoin().catch(() => ({ code: "BTC", label: "Bitcoin USD", value: "Unavailable" }));
 
@@ -521,24 +521,39 @@ async function fetchWorldNews(lang: "es" | "en" | "pt" | "fr") {
     fr: { hl: "fr", ceidLang: "fr" }
   }[lang];
   const feeds = [
-    { country: "United States", city: "New York", gl: "US", lat: 40.7128, lng: -74.006 },
-    { country: "Colombia", city: "Bogota", gl: "CO", lat: 4.711, lng: -74.0721 },
-    { country: "Brazil", city: "Sao Paulo", gl: "BR", lat: -23.5558, lng: -46.6396 },
-    { country: "France", city: "Paris", gl: "FR", lat: 48.8566, lng: 2.3522 },
-    { country: "Japan", city: "Tokyo", gl: "JP", lat: 35.6762, lng: 139.6503 },
-    { country: "India", city: "New Delhi", gl: "IN", lat: 28.6139, lng: 77.209 }
+    { country: "United States", city: "New York", gl: "US", lat: 40.7128, lng: -74.006, query: "United States politics economy technology" },
+    { country: "Colombia", city: "Bogota", gl: "CO", lat: 4.711, lng: -74.0721, query: "Colombia Bogota economia gobierno tecnologia" },
+    { country: "Brazil", city: "Sao Paulo", gl: "BR", lat: -23.5558, lng: -46.6396, query: "Brazil Sao Paulo economia governo tecnologia" },
+    { country: "France", city: "Paris", gl: "FR", lat: 48.8566, lng: 2.3522, query: "France Paris economie gouvernement technologie" },
+    { country: "Japan", city: "Tokyo", gl: "JP", lat: 35.6762, lng: 139.6503, query: "Japan Tokyo economy government technology" },
+    { country: "India", city: "New Delhi", gl: "IN", lat: 28.6139, lng: 77.209, query: "India New Delhi economy government technology" }
   ];
 
+  const usedTitles = new Set<string>();
   const results = [];
   for (const feed of feeds) {
-    const url = `https://news.google.com/rss?hl=${feedLocale.hl}&gl=${feed.gl}&ceid=${feed.gl}:${feedLocale.ceidLang}`;
+    const q = encodeURIComponent(`${feed.query} when:1d`);
+    const url = `https://news.google.com/rss/search?q=${q}&hl=${feedLocale.hl}&gl=${feed.gl}&ceid=${feed.gl}:${feedLocale.ceidLang}`;
     const response = await fetch(url);
     const xml = await response.text();
-    const title = decodeXml(xml.match(/<item>[\s\S]*?<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] ?? xml.match(/<item>[\s\S]*?<title>(.*?)<\/title>/)?.[1] ?? "Latest headlines");
-    const link = decodeXml(xml.match(/<item>[\s\S]*?<link>(.*?)<\/link>/)?.[1] ?? url);
-    results.push({ ...feed, url, title, link, impact: inferNewsImpact(title) });
+    const allItems = extractRssItems(xml);
+    const selected = allItems.find((item) => !usedTitles.has(normalizeNewsTitle(item.title))) ?? allItems[0] ?? { title: "Latest headlines", link: url };
+    usedTitles.add(normalizeNewsTitle(selected.title));
+    results.push({ ...feed, url, title: selected.title, link: selected.link, impact: inferNewsImpact(selected.title) });
   }
   return results;
+}
+
+function extractRssItems(xml: string) {
+  const matches = [...xml.matchAll(/<item>[\s\S]*?<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>[\s\S]*?<\/item>/g)];
+  return matches.map((match) => ({
+    title: decodeXml(match[1]).replace(/\s+-\s+[^-]{2,80}$/g, "").trim(),
+    link: decodeXml(match[2]).trim()
+  })).filter((item) => item.title && item.link).slice(0, 8);
+}
+
+function normalizeNewsTitle(title: string) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 90);
 }
 
 async function fetchCurrencies() {
@@ -557,13 +572,23 @@ async function fetchCurrencies() {
 }
 
 async function fetchGold() {
-  const response = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1d&interval=5m");
-  const data = await response.json() as { chart?: { result?: { meta?: { regularMarketPrice?: number; previousClose?: number } }[] } };
+  const [goldResponse, fxResponse] = await Promise.all([
+    fetch("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=1d&interval=5m"),
+    fetch("https://open.er-api.com/v6/latest/USD")
+  ]);
+  const data = await goldResponse.json() as { chart?: { result?: { meta?: { regularMarketPrice?: number; previousClose?: number } }[] } };
+  const fx = await fxResponse.json() as { rates?: Record<string, number> };
   const meta = data.chart?.result?.[0]?.meta;
   const value = meta?.regularMarketPrice;
   const previous = meta?.previousClose;
+  const copRate = fx.rates?.COP;
   const change = value && previous ? `${(((value - previous) / previous) * 100).toFixed(2)}%` : "live futures feed";
-  return { label: "Gold futures USD/oz", value: value ? value.toFixed(2) : "Unavailable", change };
+  return {
+    label: "Gold futures USD/oz",
+    value: value ? value.toFixed(2) : "Unavailable",
+    cop: value && copRate ? Math.round(value * copRate) : undefined,
+    change
+  };
 }
 
 async function fetchBitcoin() {

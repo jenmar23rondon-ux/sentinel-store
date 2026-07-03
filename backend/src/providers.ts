@@ -382,15 +382,39 @@ function webGroundedReply(message: string, webContext: string) {
     .join("\n")
     .replace(/\s+/g, " ")
     .slice(0, 1200);
+  const intro = pickForQuestion(question, [
+    `Esto encontre para "${question}":`,
+    `Buena pregunta. La respuesta corta para "${question}" es esta:`,
+    `Te lo resumo sin hacerlo largo:`,
+    `Segun las fuentes disponibles, el punto central es este:`,
+    `Voy directo a lo importante:`
+  ]);
+  const closer = pickForQuestion(`${question}:close`, [
+    "Puedo convertir esto en una nota, tabla o grafica si quieres verlo mas claro.",
+    "Si quieres, tambien puedo compararlo por pais, fecha o importancia.",
+    "Tambien puedo dejarte una version corta para estudiar o compartir.",
+    "Si necesitas mas precision, puedo buscar fuentes mas especificas.",
+    "Puedo seguir con una explicacion simple, tecnica o en formato de lista."
+  ]);
 
   return [
-    `Claro. Sobre "${question}", esto es lo mas importante:`,
+    intro,
     "",
     buildPracticalAnswer(question, compactContext),
+    "",
+    closer,
     "",
     sources.length ? "Referencias:" : "",
     ...sources.map((source, index) => `${index + 1}. ${source}`)
   ].filter(Boolean).join("\n");
+}
+
+function pickForQuestion(question: string, options: string[]) {
+  let hash = 0;
+  for (let index = 0; index < question.length; index += 1) {
+    hash = (hash * 31 + question.charCodeAt(index)) >>> 0;
+  }
+  return options[hash % options.length];
 }
 
 function extractWebSnippets(webContext: string) {

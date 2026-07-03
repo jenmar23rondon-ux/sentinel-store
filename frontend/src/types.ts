@@ -159,7 +159,7 @@ export interface WorldPulse {
   updatedAt: string;
   news: WorldNewsItem[];
   currencies: CurrencyRate[];
-  gold: { label: string; value: string | number; change: string };
+  gold: { label: string; value: string | number; cop?: number; change: string };
   bitcoin?: { code: string; label: string; value: string | number; cop?: number; change24h?: string };
   economies: EconomyRank[];
 }

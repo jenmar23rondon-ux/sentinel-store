@@ -1616,8 +1616,8 @@ export function App() {
                   {worldPulse?.gold && (
                     <div className="market-row gold">
                       <span>{worldPulse.gold.label}</span>
-                      <strong>{worldPulse.gold.value}</strong>
-                      <em>{worldPulse.gold.change}</em>
+                      <strong>{formatMoneyValue(worldPulse.gold.value, "$")}</strong>
+                      <em>{worldPulse.gold.change} · COP {worldPulse.gold.cop ? Number(worldPulse.gold.cop).toLocaleString() : "n/a"}</em>
                     </div>
                   )}
                   {worldPulse?.bitcoin && (

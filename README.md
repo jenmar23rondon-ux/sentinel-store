@@ -138,6 +138,32 @@ OLLAMA_MODEL=llama3.1
 SERPER_API_KEY=
 ```
 
+### Conectar otras IAs
+
+Aether puede responder con tres niveles:
+
+- `Auto`: usa la primera IA configurada y, si no hay una clave valida, cae a busqueda web + modo local.
+- `OpenAI`, `Claude`, `Gemini`: requieren una API key real.
+- `Ollama`: requiere tener Ollama corriendo en tu PC.
+
+En Railway o en `backend/.env`, agrega solo las claves que tengas:
+
+```env
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=...
+SERPER_API_KEY=...
+```
+
+Para Ollama local:
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1
+```
+
+Despues de cambiar variables, reinicia el backend o redeploya Railway. No uses valores de ejemplo como `tu_openai_key`; Aether los detecta como no configurados.
+
 ## Modulos del MVP
 
 ### Chat Assistant

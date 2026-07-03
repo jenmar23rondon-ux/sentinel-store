@@ -8,7 +8,7 @@ import PDFDocument from "pdfkit";
 import { WebSocketServer } from "ws";
 import { z } from "zod";
 import { env } from "./env.js";
-import { analyzeImage, generateAssistantReply, providerStatus } from "./providers.js";
+import { analyzeImage, generateAssistantReply, hasUsableKey, providerStatus } from "./providers.js";
 import { webSearch } from "./search.js";
 import { db } from "./store.js";
 import type { ActionItem, ActionType, ChartKind, CustomChart, ProviderName } from "./types.js";
@@ -472,11 +472,11 @@ function broadcast(message: unknown) {
 
 function integrationStatus() {
   return {
-    openai: { configured: Boolean(env.openaiApiKey), label: "OpenAI" },
-    claude: { configured: Boolean(env.anthropicApiKey), label: "Claude" },
-    gemini: { configured: Boolean(env.geminiApiKey), label: "Gemini" },
-    ollama: { configured: Boolean(env.ollamaBaseUrl), label: "Ollama local" },
-    webSearch: { configured: Boolean(env.serperApiKey), label: "Serper web search", fallback: "DuckDuckGo Instant Answer" },
+    openai: { configured: hasUsableKey(env.openaiApiKey), label: "OpenAI", env: "OPENAI_API_KEY" },
+    claude: { configured: hasUsableKey(env.anthropicApiKey), label: "Claude", env: "ANTHROPIC_API_KEY" },
+    gemini: { configured: hasUsableKey(env.geminiApiKey), label: "Gemini", env: "GEMINI_API_KEY" },
+    ollama: { configured: Boolean(env.ollamaBaseUrl), label: "Ollama local", env: "OLLAMA_BASE_URL" },
+    webSearch: { configured: hasUsableKey(env.serperApiKey), label: "Serper web search", env: "SERPER_API_KEY", fallback: "Wikipedia + DuckDuckGo fallback" },
     github: { configured: false, label: "GitHub OAuth", next: true },
     gmail: { configured: false, label: "Gmail OAuth", next: true },
     calendar: { configured: false, label: "Google Calendar OAuth", next: true },

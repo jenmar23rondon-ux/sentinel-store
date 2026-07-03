@@ -93,7 +93,7 @@ function resolveProviderOrder(provider: ProviderName): ProviderName[] {
   return [provider, ...configured.filter((item) => item !== provider)];
 }
 
-function hasUsableKey(value?: string): value is string {
+export function hasUsableKey(value?: string): value is string {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
   return normalized.length > 20

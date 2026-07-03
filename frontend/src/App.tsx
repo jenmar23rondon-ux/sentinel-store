@@ -606,7 +606,7 @@ export function App() {
     careerReminders: true,
     locationInsights: true
   });
-  const [integrations, setIntegrations] = useState<Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>>({});
+  const [integrations, setIntegrations] = useState<Record<string, { configured: boolean; label: string; env?: string; fallback?: string; next?: boolean }>>({});
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [provider, setProvider] = useState<ProviderName>("auto");
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem("aether-language") as Language) || "es");
@@ -1324,7 +1324,7 @@ export function App() {
               <button className="integration" key={key} onClick={() => addModuleTask(item.label)}>
                 <span className={item.configured ? "dot ready" : "dot"} />
                 <span>{item.label}</span>
-                <small>{item.configured ? t.ready : item.next ? t.next : item.fallback ? t.fallback : t.pending}</small>
+                <small>{item.configured ? t.ready : item.env ? item.env : item.next ? t.next : item.fallback ? item.fallback : t.pending}</small>
               </button>
             ))}
           </div>

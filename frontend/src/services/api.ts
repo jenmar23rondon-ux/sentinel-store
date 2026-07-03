@@ -31,7 +31,7 @@ export const api = {
     charts: CustomChart[];
     notificationSettings: NotificationSettings;
     providers: Record<string, boolean>;
-    integrations: Record<string, { configured: boolean; label: string; fallback?: string; next?: boolean }>;
+    integrations: Record<string, { configured: boolean; label: string; env?: string; fallback?: string; next?: boolean }>;
   }>("/api/bootstrap"),
 
   chat: (message: string, provider: ProviderName, conversationId?: string) =>

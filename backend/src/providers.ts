@@ -346,18 +346,14 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
   if (explainMatch) {
     const topic = explainMatch[1].replace(/[?Â¿.]/g, "").trim();
     return [
-      `${capitalize(topic)} es un tema que puedo ayudarte a entender y organizar.`,
+      `Puedo ayudarte con ${topic}. No encontre una fuente web clara en este momento, asi que te doy una base general:`,
       "",
-      "En modo local puedo darte una explicacion general, ejemplos y pasos de estudio. Para una respuesta con fuentes actualizadas, configura SERPER_API_KEY y una IA como OPENAI_API_KEY o GEMINI_API_KEY en Railway.",
+      "1. Definicion: dime el contexto exacto y puedo aterrizarlo mejor.",
+      "2. Idea principal: lo importante es entender para que sirve, donde se usa y que problema resuelve.",
+      "3. Ejemplo: puedo explicarlo con una analogia sencilla o con un caso practico.",
+      "4. Siguiente paso: si quieres, pideme una version corta, una version profunda o una comparacion con otro tema.",
       "",
-      "Formato rapido para estudiarlo:",
-      "1. Definicion simple.",
-      "2. Para que sirve.",
-      "3. Ejemplo practico.",
-      "4. Errores comunes.",
-      "5. Mini proyecto para practicar.",
-      "",
-      `Si quieres, dime: "explicame ${topic} con ejemplo de codigo" o "crea un plan para aprender ${topic}".`
+      `Prueba tambien: "busca en internet ${topic}" para forzar una respuesta con fuentes.`
     ].join("\n");
   }
   if (/(qu[eÃ©] es|explica|como|c[oÃ³]mo|ayuda|mejor|plan|recomienda|dime)/i.test(lower)) {
@@ -402,7 +398,9 @@ function webGroundedReply(message: string, webContext: string) {
 
 function buildPracticalAnswer(question: string, context: string) {
   const lower = question.toLowerCase();
-  if (/(concentraci[oÃ³]n|concentracion|enfocar|focus|productividad|estudiar|aprender)/i.test(lower)) {
+  const cleanContext = cleanWebContext(context);
+
+  if (/(concentracion|concentración|enfocar|focus|productividad|estudiar|aprender)/i.test(lower)) {
     return [
       "La forma mas efectiva de mejorar la concentracion suele ser combinar menos distracciones, bloques de trabajo medibles y descanso real.",
       "",
@@ -416,7 +414,7 @@ function buildPracticalAnswer(question: string, context: string) {
     ].join("\n");
   }
 
-  if (/(mejor|recomienda|como|c[oÃ³]mo|plan|ayuda)/i.test(lower)) {
+  if (/(mejor|recomienda|como|cómo|plan|ayuda)/i.test(lower)) {
     return [
       "Mi respuesta practica seria:",
       "",
@@ -425,19 +423,57 @@ function buildPracticalAnswer(question: string, context: string) {
       "3. Haz una prueba pequena antes de comprometerte por completo.",
       "4. Guarda el resultado como nota, tarea o grafica para medir si realmente funciono.",
       "",
-      `Contexto encontrado: ${context || "no encontre un resumen amplio, pero puedo ayudarte a estructurarlo."}`
+      `Contexto encontrado: ${cleanContext || "no encontre un resumen amplio, pero puedo ayudarte a estructurarlo."}`
+    ].join("\n");
+  }
+
+  if (/(por que|por qué|porque|causa|razon|razón)/i.test(lower)) {
+    return [
+      cleanContext || "La causa depende del tema exacto, pero puedo ayudarte a separarla en factores principales.",
+      "",
+      "Respuesta corta:",
+      makeKeyPoints(cleanContext)[0] ?? "1. La causa principal se entiende mejor revisando el contexto y los factores que intervienen.",
+      "",
+      "Si quieres, puedo explicarlo en modo muy simple, tecnico o con una analogia."
+    ].join("\n");
+  }
+  if (/(qué es|que es|cual es|cuál es|quien es|quién es|explica|dime|hablame|háblame)/i.test(lower)) {
+    return [
+      cleanContext || "No encontre una fuente suficientemente clara, pero puedo darte una explicacion general.",
+      "",
+      "Puntos clave:",
+      ...makeKeyPoints(cleanContext),
+      "",
+      "En pocas palabras: si quieres, puedo explicartelo tambien con un ejemplo simple, una analogia o un plan para aprenderlo."
     ].join("\n");
   }
 
   return [
-    "Resumen:",
-    context || "No encontre suficiente contexto en la busqueda, pero puedo ayudarte a desglosarlo.",
+    cleanContext || "No encontre suficiente contexto en la busqueda, pero puedo ayudarte a desglosarlo.",
     "",
-    "Como usarlo:",
-    "1. Identifica la idea principal.",
-    "2. Revisa si aplica a tu caso.",
-    "3. Convierte la siguiente accion en tarea o nota dentro de Aether."
+    "Mi lectura rapida:",
+    "1. Identifica la idea principal del tema.",
+    "2. Mira que parte aplica a tu pregunta concreta.",
+    "3. Si quieres actuar sobre esto, conviertelo en tarea, nota o grafica dentro de Aether."
   ].join("\n");
+}
+
+function cleanWebContext(context: string) {
+  return context
+    .replace(/^Sin resumen disponible\.?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function makeKeyPoints(context: string) {
+  const text = cleanWebContext(context);
+  if (!text) return ["1. El tema necesita mas contexto o una fuente mejor.", "2. Puedo ayudarte a buscarlo de otra forma."];
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+  return sentences.map((sentence, index) => `${index + 1}. ${sentence}`);
 }
 
 function extractSources(webContext: string) {

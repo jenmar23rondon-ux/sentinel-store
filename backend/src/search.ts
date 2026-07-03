@@ -51,6 +51,13 @@ function curatedSearch(query: string): SearchResult[] {
       snippet: "La atencion es el proceso cognitivo que permite seleccionar informacion relevante y sostener el foco mental. Para mejorarla suelen ayudar reducir distractores, organizar el trabajo en bloques, descansar y medir el progreso."
     }];
   }
+  if (/(cielo.*azul|azul.*cielo|rayleigh)/i.test(query)) {
+    return [{
+      title: "Por que el cielo es azul",
+      url: "https://es.wikipedia.org/wiki/Dispersi%C3%B3n_de_Rayleigh",
+      snippet: "El cielo se ve azul principalmente por la dispersion de Rayleigh: las moleculas de la atmosfera dispersan mas la luz azul que otros colores de longitud de onda mayor."
+    }];
+  }
   return [];
 }
 
@@ -178,15 +185,16 @@ function extractTopic(query: string) {
     .trim();
 
   if (/(concentraci[oó]n|concentracion|enfocar|focus|productividad)/i.test(topic)) return "atencion";
+  if (/(cielo.*azul|azul.*cielo)/i.test(topic)) return "dispersion de Rayleigh";
   if (/(programaci[oó]n|lenguajes?|idiomas? de programaci[oó]n)/i.test(topic)) return "lenguaje de programacion";
   if (/(ciberseguridad|seguridad inform[aá]tica|cybersecurity)/i.test(topic)) return "seguridad informatica";
 
-  const prefixPattern = /^(busca|buscar|noticia sobre|noticias sobre|actualidad de|que es|qu\u00e9 es|explica|dime sobre|me puedes decirme que es|me puedes decir que es|me puedes decir sobre|como funciona|c\u00f3mo funciona)\s+/i;
+  const prefixPattern = /^(busca|buscar|noticia sobre|noticias sobre|actualidad de|que es|qu\u00e9 es|cual es|cu[aá]l es|cuales son|cu[aá]les son|quien es|qui[eé]n es|quien fue|qui[eé]n fue|por que|por qu[eé]|para que sirve|para qu[eé] sirve|explica|explicame|expl[ií]came|dime|dime sobre|hablame de|h[aá]blame de|me puedes decirme que es|me puedes decir que es|me puedes decir sobre|como funciona|c\u00f3mo funciona)\s+/i;
   for (let index = 0; index < 3; index += 1) {
     const next = topic.replace(prefixPattern, "").trim();
     if (next === topic) break;
     topic = next;
   }
 
-  return topic;
+  return topic.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i, "").trim();
 }

@@ -107,6 +107,11 @@ app.post("/api/chat", async (req, res, next) => {
   }
 });
 
+app.delete("/api/conversations/:id", async (req, res) => {
+  await db.deleteConversation(req.params.id);
+  res.status(204).send();
+});
+
 app.get("/api/memory", async (_req, res) => {
   res.json((await db.snapshot()).memory);
 });

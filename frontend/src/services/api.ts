@@ -1,4 +1,4 @@
-import type { ActionItem, ActionType, ActivityEvent, ChartKind, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem, WorldPulse } from "../types";
+import type { ActionItem, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem, WorldPulse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
 
@@ -20,7 +20,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   bootstrap: () => request<{
-    conversations: unknown[];
+    conversations: Conversation[];
     messages: Message[];
     memory: MemoryItem[];
     tasks: TaskItem[];
@@ -39,6 +39,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message, provider, conversationId })
     }),
+
+  deleteConversation: (id: string) => request<void>(`/api/conversations/${id}`, { method: "DELETE" }),
 
   addMemory: (content: string, tags: string[], importance: number) =>
     request<MemoryItem>("/api/memory", {

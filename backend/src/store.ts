@@ -102,6 +102,13 @@ export const db = {
     return created;
   },
 
+  async deleteConversation(id: string) {
+    const store = await ensureStore();
+    store.conversations = store.conversations.filter((item) => item.id !== id);
+    store.messages = store.messages.filter((item) => item.conversationId !== id);
+    await persist();
+  },
+
   async addMemory(input: Pick<MemoryItem, "content"> & Partial<Pick<MemoryItem, "tags" | "importance">>) {
     const store = await ensureStore();
     const item: MemoryItem = {

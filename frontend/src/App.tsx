@@ -56,7 +56,7 @@ import { registerSW } from "virtual:pwa-register";
 import { api } from "./services/api";
 import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
 import { offlineDb, queueSync } from "./services/offlineDb";
-import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
+import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
 import type { WorldPulse } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
@@ -593,6 +593,7 @@ const moduleCatalog = [
 
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [memory, setMemory] = useState<MemoryItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [vision, setVision] = useState<VisionItem[]>([]);
@@ -752,6 +753,7 @@ export function App() {
     const goOnline = () => {
       setOnline(true);
       syncWhenOnline().then(() => api.bootstrap()).then((data) => {
+        setConversations(data.conversations);
         setCareer(data.career);
         cacheBootstrap({ tasks: data.tasks, career: data.career, messages: data.messages });
       }).catch(() => undefined);
@@ -769,6 +771,7 @@ export function App() {
     api.bootstrap()
       .then((data) => {
         setMessages(data.messages);
+        setConversations(data.conversations);
         setMemory(data.memory);
         setTasks(data.tasks);
         setVision(data.vision);
@@ -816,6 +819,7 @@ export function App() {
     () => messages.filter((message) => !conversationId || message.conversationId === conversationId),
     [messages, conversationId]
   );
+  const activeConversation = conversations.find((item) => item.id === conversationId);
 
   const openTasks = tasks.filter((task) => task.status === "open");
   const pendingActions = actions.filter((action) => action.status === "pending" || action.status === "approved");
@@ -848,6 +852,25 @@ export function App() {
     await submitChat(chatInput.trim());
   }
 
+  function startNewConversation() {
+    setConversationId(undefined);
+    setActiveView("chat");
+    setMobileNavOpen(false);
+  }
+
+  function openConversation(id: string) {
+    setConversationId(id);
+    setActiveView("chat");
+    setMobileNavOpen(false);
+  }
+
+  async function removeConversation(id: string) {
+    await api.deleteConversation(id);
+    setConversations((current) => current.filter((item) => item.id !== id));
+    setMessages((current) => current.filter((item) => item.conversationId !== id));
+    if (conversationId === id) setConversationId(conversations.find((item) => item.id !== id)?.id);
+  }
+
   async function submitChat(value: string, retryConversationId = conversationId) {
     setChatInput("");
     setBusy(true);
@@ -857,6 +880,7 @@ export function App() {
       setConversationId(data.conversation.id);
       setMessages((current) => [...current, ...data.messages]);
       const refreshed = await api.bootstrap();
+      setConversations(refreshed.conversations);
       setMemory(refreshed.memory);
       setTasks(refreshed.tasks);
       setActions(refreshed.actions);
@@ -1283,6 +1307,35 @@ export function App() {
           </button>
         </div>
 
+        <section className="conversation-panel">
+          <div className="conversation-head">
+            <span>
+              <BookOpen size={16} />
+              Conversaciones
+            </span>
+            <button onClick={startNewConversation} title="Nueva conversacion">
+              <Plus size={15} />
+            </button>
+          </div>
+          <div className="conversation-list">
+            <button className={!conversationId ? "active" : ""} onClick={startNewConversation}>
+              <span>Nueva conversacion</span>
+              <small>Lista para empezar</small>
+            </button>
+            {conversations.slice(0, 10).map((item) => (
+              <div className={`conversation-item ${conversationId === item.id ? "active" : ""}`} key={item.id}>
+                <button onClick={() => openConversation(item.id)}>
+                  <span>{item.title}</span>
+                  <small>{new Date(item.updatedAt).toLocaleDateString()}</small>
+                </button>
+                <button onClick={() => removeConversation(item.id)} title={t.delete}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {navSettingsOpen && (
           <section className="nav-settings">
             {navItems.map((item) => (
@@ -1379,8 +1432,8 @@ export function App() {
             {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
           <div className="topbar-copy">
-            <h2>{t.command}</h2>
-            <p>{t.commandCopy}</p>
+            <h2>{activeView === "chat" ? (activeConversation?.title ?? "Nueva conversacion") : t.command}</h2>
+            <p>{activeView === "chat" ? "Aether responde con tus IAs, memoria y busqueda web." : t.commandCopy}</p>
           </div>
           <div className="control-cluster">
             {!isStandalone && (

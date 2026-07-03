@@ -91,12 +91,10 @@ button {
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 312px minmax(0, 1fr);
-  background:
-    radial-gradient(circle at 18% 8%, rgba(30, 127, 104, 0.13), transparent 24rem),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   transition: grid-template-columns 180ms ease;
 }
@@ -119,6 +117,10 @@ button {
   border-right: 1px solid var(--sidebar-border);
   transition: width 180ms ease, transform 200ms ease;
   min-width: 0;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   will-change: transform;
 }
 
@@ -142,6 +144,7 @@ button {
 .sidebar.compact .brand div:last-child,
 .sidebar.compact .nav-list span,
 .sidebar.compact .nav-tools span,
+.sidebar.compact .conversation-panel,
 .sidebar.compact .metric-grid,
 .sidebar.compact .integrations-panel,
 .sidebar.compact .provider-panel,
@@ -214,24 +217,24 @@ button {
 }
 
 .brand-mark {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   border-radius: 14px;
   display: grid;
   place-items: center;
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.24), transparent 26%),
-    linear-gradient(135deg, #6d5dfc, #14b8a6 58%, #0f172a);
+    radial-gradient(circle at 50% 54%, rgba(45, 212, 191, 0.32), transparent 34%),
+    linear-gradient(145deg, #111827, #0f766e 62%, #090d13);
   color: white;
-  box-shadow: 0 12px 28px rgba(109, 93, 252, 0.28);
+  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.24);
 }
 
 .brand-letter {
   position: relative;
   z-index: 2;
-  font-size: 23px;
+  font-size: 31px;
   font-weight: 900;
   line-height: 1;
 }
@@ -245,11 +248,11 @@ button {
 }
 
 .orbit-one {
-  transform: rotate(28deg) scaleX(1.25);
+  animation: orbitSpin 7s linear infinite;
 }
 
 .orbit-two {
-  transform: rotate(-28deg) scaleX(1.25);
+  animation: orbitSpinReverse 9s linear infinite;
 }
 
 .brand-mark::after,
@@ -263,6 +266,16 @@ button {
   box-shadow: 0 0 12px rgba(250, 204, 21, 0.8);
   transform: translate(17px, -14px);
   z-index: 3;
+}
+
+@keyframes orbitSpin {
+  from { transform: rotate(28deg) scaleX(1.25); }
+  to { transform: rotate(388deg) scaleX(1.25); }
+}
+
+@keyframes orbitSpinReverse {
+  from { transform: rotate(-28deg) scaleX(1.25); }
+  to { transform: rotate(-388deg) scaleX(1.25); }
 }
 
 .brand h1,
@@ -323,6 +336,117 @@ button {
   transform: translateY(-2px);
   border-color: rgba(45, 212, 191, 0.45);
   background: rgba(45, 212, 191, 0.12);
+}
+
+.conversation-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--sidebar-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.conversation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #dce6ef;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.conversation-head span,
+.conversation-head button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.conversation-head button {
+  width: 30px;
+  height: 30px;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #f5f7f9;
+  border: 1px solid var(--sidebar-border);
+}
+
+.conversation-list {
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.conversation-list > button,
+.conversation-item {
+  min-height: 42px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #f5f7f9;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.conversation-list > button {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 7px 9px;
+}
+
+.conversation-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+}
+
+.conversation-item > button:first-child {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 7px 9px;
+  color: inherit;
+  background: transparent;
+}
+
+.conversation-item > button:last-child {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #aeb9c4;
+  background: transparent;
+}
+
+.conversation-list span,
+.conversation-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.conversation-list small,
+.conversation-item small {
+  color: #aeb9c4;
+  font-size: 11px;
+}
+
+.conversation-list > button:hover,
+.conversation-list > button.active,
+.conversation-item:hover,
+.conversation-item.active {
+  transform: translateX(2px);
+  border-color: rgba(45, 212, 191, 0.35);
+  background: rgba(45, 212, 191, 0.11);
 }
 
 .nav-settings {
@@ -402,6 +526,7 @@ button {
 .workspace {
   padding: 22px;
   min-width: 0;
+  min-height: 100dvh;
 }
 
 .topbar {
@@ -410,6 +535,7 @@ button {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+  padding: 0;
 }
 
 .topbar-copy {
@@ -649,7 +775,7 @@ button {
 }
 
 .chat-panel {
-  height: calc(100vh - 120px);
+  height: calc(100dvh - 120px);
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
@@ -661,6 +787,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  scroll-padding-bottom: 96px;
 }
 
 .message {
@@ -2355,6 +2482,8 @@ textarea:focus {
     position: fixed;
     inset: 0 auto 0 0;
     width: min(86vw, 330px);
+    max-height: 100dvh;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
     z-index: 30;
     transform: translateX(-105%);
     transition: transform 200ms ease;
@@ -2368,13 +2497,6 @@ textarea:focus {
 
   .sidebar.hidden {
     transform: translateX(-105%);
-  }
-
-  .sidebar-peek {
-    top: auto;
-    bottom: calc(86px + env(safe-area-inset-bottom));
-    left: 14px;
-    z-index: 35;
   }
 
   .sidebar-close {
@@ -2445,13 +2567,20 @@ textarea:focus {
   }
 
   .workspace {
-    padding: 12px;
+    padding: 0 12px 12px;
   }
 
   .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: start;
+    margin: 0 -12px 12px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
   }
 
   .topbar-copy {
@@ -2510,7 +2639,7 @@ textarea:focus {
   }
 
   .chat-panel {
-    height: calc(100dvh - 236px);
+    height: calc(100dvh - 180px);
     min-height: 430px;
   }
 
@@ -2547,11 +2676,13 @@ textarea:focus {
 
 @media (max-width: 420px) {
   .workspace {
-    padding: 8px;
+    padding: 0 8px 8px;
   }
 
   .topbar {
     gap: 8px;
+    margin: 0 -8px 8px;
+    padding: calc(8px + env(safe-area-inset-top)) 8px 9px;
   }
 
   .topbar h2 {
@@ -2568,7 +2699,7 @@ textarea:focus {
   }
 
   .chat-panel {
-    height: calc(100dvh - 214px);
+    height: calc(100dvh - 158px);
     min-height: 390px;
     border-radius: 8px;
   }
@@ -2582,9 +2713,4 @@ textarea:focus {
     flex-wrap: wrap;
   }
 
-  .sidebar-peek {
-    left: auto;
-    right: 12px;
-    bottom: calc(74px + env(safe-area-inset-bottom));
-  }
 }

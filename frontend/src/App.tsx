@@ -618,6 +618,7 @@ export function App() {
   const [sidebarHidden, setSidebarHidden] = useState(() => localStorage.getItem("aether-sidebar-hidden") === "true");
   const [navSettingsOpen, setNavSettingsOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<string[]>(() => JSON.parse(localStorage.getItem("aether-modules") || "[]"));
   const [hiddenNavItems, setHiddenNavItems] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("aether-hidden-nav") || "[]"));
   const [panelOrder, setPanelOrder] = useState<ViewKey[]>(() => JSON.parse(localStorage.getItem("aether-panel-order") || JSON.stringify(defaultPanelOrder)));
@@ -1363,17 +1364,18 @@ export function App() {
         }}
         aria-hidden="true"
       />
-      {sidebarHidden && (
-        <button className="sidebar-peek" onClick={() => setSidebarHidden(false)} title="Open sidebar">
-          <Menu size={17} />
-          <span>Menu</span>
-        </button>
-      )}
       {mobileNavOpen && <button className="sidebar-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation" />}
 
       <section className="workspace">
         <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMobileNavOpen((value) => !value)} title="Menu">
+          <button
+            className="mobile-menu"
+            onClick={() => {
+              setSidebarHidden(false);
+              setMobileNavOpen((value) => !value);
+            }}
+            title="Menu"
+          >
             {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
           <div className="topbar-copy">
@@ -1413,17 +1415,33 @@ export function App() {
               {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
               <span>{theme === "light" ? t.dark : t.light}</span>
             </button>
-            <label className="control-select" title={t.provider}>
-              <Bot size={17} />
-              <select value={provider} onChange={(event) => setProvider(event.target.value as ProviderName)}>
-                <option value="auto">Auto</option>
-                <option value="openai">OpenAI</option>
-                <option value="claude">Claude</option>
-                <option value="gemini">Gemini</option>
-                <option value="ollama">Ollama</option>
-                <option value="local">Local</option>
-              </select>
-            </label>
+            <div className={`provider-picker ${providerMenuOpen ? "open" : ""}`} title={t.provider}>
+              <button className="provider-trigger" onClick={() => setProviderMenuOpen((value) => !value)}>
+                <Bot size={17} />
+                <span>{providerLabel(provider, integrations)}</span>
+                <ChevronDown size={15} />
+              </button>
+              <div className="provider-menu">
+                {(["auto", "openai", "gemini", "claude", "ollama", "local"] as ProviderName[]).map((item) => {
+                  const available = providerAvailable(item, integrations);
+                  return (
+                    <button
+                      className={provider === item ? "selected" : ""}
+                      disabled={!available}
+                      key={item}
+                      onClick={() => {
+                        setProvider(item);
+                        setProviderMenuOpen(false);
+                      }}
+                    >
+                      <span className={available ? "dot ready" : "dot"} />
+                      <strong>{providerLabel(item, integrations)}</strong>
+                      <small>{providerHint(item, integrations)}</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </header>
 
@@ -2083,6 +2101,7 @@ function MessageBody({ content, sourceLabel }: { content: string; sourceLabel: s
           <div>
             {sources.map((source, index) => (
               <a href={source} target="_blank" rel="noreferrer" key={`${source}-${index}`}>
+                <sup>{index + 1}</sup>
                 {friendlySourceLabel(source)}
               </a>
             ))}
@@ -2094,7 +2113,7 @@ function MessageBody({ content, sourceLabel }: { content: string; sourceLabel: s
 }
 
 function splitMessageSources(content: string) {
-  const marker = /(?:\n\n|\n)(Fuentes consultadas:|Sources consulted:|Fontes consultadas:|Sources consultees:)\s*/i;
+  const marker = /(?:\n\n|\n)(Referencias:|Fuentes consultadas:|Sources consulted:|Fontes consultadas:|Sources consultees:)\s*/i;
   const parts = content.split(marker);
   if (parts.length < 3) return { body: content, sources: [] as string[] };
 
@@ -2115,6 +2134,23 @@ function friendlySourceLabel(source: string) {
   } catch {
     return source;
   }
+}
+
+function providerAvailable(provider: ProviderName, integrations: Record<string, { configured: boolean }>) {
+  return provider === "auto" || provider === "local" || Boolean(integrations[provider]?.configured);
+}
+
+function providerLabel(provider: ProviderName, integrations: Record<string, { label?: string }>) {
+  if (provider === "auto") return "Auto";
+  if (provider === "local") return "Local";
+  return integrations[provider]?.label ?? provider;
+}
+
+function providerHint(provider: ProviderName, integrations: Record<string, { configured?: boolean; env?: string }>) {
+  if (provider === "auto") return "Elige la mejor IA conectada";
+  if (provider === "local") return "Sin costo, con menos razonamiento";
+  if (integrations[provider]?.configured) return "Conectada";
+  return integrations[provider]?.env ?? "No conectada";
 }
 
 function MessageActions({

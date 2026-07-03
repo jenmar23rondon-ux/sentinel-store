@@ -378,10 +378,7 @@ function localReply(lastUserMessage: string, memoryContext: string, taskContext:
 function webGroundedReply(message: string, webContext: string) {
   const question = message.split("\n\n[WEB_CONTEXT]")[0].replace(/[Â¿?]/g, "").trim();
   const sources = extractSources(webContext);
-  const compactContext = webContext
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("Fuente:"))
-    .map((line) => line.replace(/^\s*\d+\.\s*/, "").trim())
+  const compactContext = extractWebSnippets(webContext)
     .join("\n")
     .replace(/\s+/g, " ")
     .slice(0, 1200);
@@ -391,16 +388,28 @@ function webGroundedReply(message: string, webContext: string) {
     "",
     buildPracticalAnswer(question, compactContext),
     "",
-    sources.length ? "Fuentes consultadas:" : "",
+    sources.length ? "Referencias:" : "",
     ...sources.map((source, index) => `${index + 1}. ${source}`)
   ].filter(Boolean).join("\n");
+}
+
+function extractWebSnippets(webContext: string) {
+  const snippets: string[] = [];
+  const lines = webContext.split("\n");
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!/^\d+\.\s+/.test(line)) continue;
+    const snippet = lines[index + 1]?.trim();
+    if (snippet && !snippet.startsWith("Fuente:")) snippets.push(snippet);
+  }
+  return snippets;
 }
 
 function buildPracticalAnswer(question: string, context: string) {
   const lower = question.toLowerCase();
   const cleanContext = cleanWebContext(context);
 
-  if (/(concentracion|concentración|enfocar|focus|productividad|estudiar|aprender)/i.test(lower)) {
+  if (/(concentracion|concentraciÃ³n|enfocar|focus|productividad|estudiar|aprender)/i.test(lower)) {
     return [
       "La forma mas efectiva de mejorar la concentracion suele ser combinar menos distracciones, bloques de trabajo medibles y descanso real.",
       "",
@@ -414,7 +423,7 @@ function buildPracticalAnswer(question: string, context: string) {
     ].join("\n");
   }
 
-  if (/(mejor|recomienda|como|cómo|plan|ayuda)/i.test(lower)) {
+  if (/(mejor|recomienda|como|cÃ³mo|plan|ayuda)/i.test(lower)) {
     return [
       "Mi respuesta practica seria:",
       "",
@@ -427,7 +436,7 @@ function buildPracticalAnswer(question: string, context: string) {
     ].join("\n");
   }
 
-  if (/(por que|por qué|porque|causa|razon|razón)/i.test(lower)) {
+  if (/(por que|por quÃ©|porque|causa|razon|razÃ³n)/i.test(lower)) {
     return [
       cleanContext || "La causa depende del tema exacto, pero puedo ayudarte a separarla en factores principales.",
       "",
@@ -437,7 +446,7 @@ function buildPracticalAnswer(question: string, context: string) {
       "Si quieres, puedo explicarlo en modo muy simple, tecnico o con una analogia."
     ].join("\n");
   }
-  if (/(qué es|que es|cual es|cuál es|quien es|quién es|explica|dime|hablame|háblame)/i.test(lower)) {
+  if (/(quÃ© es|que es|cual es|cuÃ¡l es|quien es|quiÃ©n es|explica|dime|hablame|hÃ¡blame)/i.test(lower)) {
     return [
       cleanContext || "No encontre una fuente suficientemente clara, pero puedo darte una explicacion general.",
       "",
@@ -598,3 +607,4 @@ function visionPrompt(prompt: string) {
 function localVisionReply(prompt: string, mimeType: string) {
   return `Imagen recibida (${mimeType}). Modo local no puede ver pixeles ni hacer OCR real, pero ya guarde la imagen en Vision Memory. Para analisis visual completo conecta OpenAI, Claude, Gemini u Ollama con un modelo multimodal.\n\nSolicitud: ${prompt || "Analizar imagen"}\n\nSiguiente paso recomendado: agrega una clave de IA multimodal en backend/.env y vuelve a ejecutar el analisis.`;
 }
+

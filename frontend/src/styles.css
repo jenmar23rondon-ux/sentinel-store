@@ -429,6 +429,7 @@ button {
 
 .control-select,
 .language-trigger,
+.provider-trigger,
 .theme-toggle,
 .install-button {
   min-height: 40px;
@@ -448,6 +449,7 @@ button {
 
 .control-select:hover,
 .language-trigger:hover,
+.provider-trigger:hover,
 .theme-toggle:hover,
 .install-button:hover {
   border-color: var(--accent);
@@ -457,6 +459,7 @@ button {
 
 .control-select::after,
 .language-trigger::after,
+.provider-trigger::after,
 .theme-toggle::after,
 .install-button::after {
   content: "";
@@ -469,6 +472,7 @@ button {
 
 .control-select:hover::after,
 .language-trigger:hover::after,
+.provider-trigger:hover::after,
 .theme-toggle:hover::after,
 .install-button:hover::after {
   transform: translateX(120%);
@@ -476,6 +480,7 @@ button {
 
 .control-select span,
 .language-trigger span,
+.provider-trigger span,
 .theme-toggle span,
 .install-button span {
   line-height: 1.12;
@@ -488,24 +493,27 @@ button {
   min-width: max-content;
 }
 
-.language-picker {
+.language-picker,
+.provider-picker {
   position: relative;
   min-width: 0;
 }
 
-.language-trigger {
+.language-trigger,
+.provider-trigger {
   color: var(--text);
   min-width: 90px;
   justify-content: center;
 }
 
-.language-menu {
+.language-menu,
+.provider-menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
   z-index: 30;
   min-width: 190px;
-  max-width: min(190px, calc(100vw - 28px));
+  max-width: min(260px, calc(100vw - 28px));
   display: none;
   gap: 6px;
   padding: 8px;
@@ -521,14 +529,21 @@ button {
   overflow: hidden;
 }
 
-.language-picker.open .language-menu {
+.language-menu {
+  left: 0;
+  right: auto;
+}
+
+.language-picker.open .language-menu,
+.provider-picker.open .provider-menu {
   display: grid;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0) scale(1);
 }
 
-.language-menu button {
+.language-menu button,
+.provider-menu button {
   min-height: 44px;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -542,8 +557,24 @@ button {
   transition: background 140ms ease, transform 140ms ease;
 }
 
+.provider-menu button {
+  grid-template-columns: auto 1fr;
+}
+
+.provider-menu button small {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+.provider-menu button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .language-menu button:hover,
-.language-menu button.selected {
+.language-menu button.selected,
+.provider-menu button:hover:not(:disabled),
+.provider-menu button.selected {
   background: var(--accent-soft);
   transform: translateX(3px);
 }
@@ -728,6 +759,19 @@ button {
   font-weight: 800;
   text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+.message-sources a sup {
+  min-width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
 }
 
 .message-actions {
@@ -2428,6 +2472,8 @@ textarea:focus {
   .control-select,
   .language-picker,
   .language-trigger,
+  .provider-picker,
+  .provider-trigger,
   .theme-toggle,
   .install-button {
     width: 100%;

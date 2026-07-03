@@ -1329,7 +1329,40 @@ export function App() {
             ))}
           </div>
         </section>
+
+        <section className="panel provider-panel">
+          <div className="panel-title">
+            <Bot size={17} />
+            <h2>IA activa</h2>
+          </div>
+          <div className="provider-grid">
+            {(["auto", "openai", "gemini", "claude", "local"] as ProviderName[]).map((item) => {
+              const available = item === "auto" || item === "local" || Boolean(integrations[item]?.configured);
+              return (
+                <button
+                  className={provider === item ? "active" : ""}
+                  disabled={!available}
+                  key={item}
+                  onClick={() => setProvider(item)}
+                  title={available ? `Usar ${item}` : `${item} no esta conectado`}
+                >
+                  <span className={available ? "dot ready" : "dot"} />
+                  <strong>{item === "auto" ? "Auto" : item === "local" ? "Local" : integrations[item]?.label ?? item}</strong>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       </aside>
+      <div
+        className="sidebar-edge"
+        onMouseEnter={() => setSidebarHidden(false)}
+        onTouchStart={() => {
+          setSidebarHidden(false);
+          setMobileNavOpen(true);
+        }}
+        aria-hidden="true"
+      />
       {sidebarHidden && (
         <button className="sidebar-peek" onClick={() => setSidebarHidden(false)} title="Open sidebar">
           <Menu size={17} />
@@ -1432,7 +1465,7 @@ export function App() {
                     <span>{message.role === "user" ? t.you : t.assistantName}</span>
                     {message.provider && <small>{message.provider}</small>}
                   </div>
-                  <p>{message.content}</p>
+                  <MessageBody content={message.content} sourceLabel={t.sources} />
                   <MessageActions
                     message={message}
                     onRetry={() => retryMessage(message)}
@@ -2032,6 +2065,56 @@ function chartColor(index: number) {
 function formatChartValue(value: number, unit?: string) {
   const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
   return `${formatted}${unit ? ` ${unit}` : ""}`;
+}
+
+function MessageBody({ content, sourceLabel }: { content: string; sourceLabel: string }) {
+  const { body, sources } = splitMessageSources(content);
+
+  return (
+    <>
+      <p>{body}</p>
+      {sources.length > 0 && (
+        <details className="message-sources">
+          <summary>
+            <Globe2 size={14} />
+            <span>{sourceLabel}</span>
+            <small>{sources.length}</small>
+          </summary>
+          <div>
+            {sources.map((source, index) => (
+              <a href={source} target="_blank" rel="noreferrer" key={`${source}-${index}`}>
+                {friendlySourceLabel(source)}
+              </a>
+            ))}
+          </div>
+        </details>
+      )}
+    </>
+  );
+}
+
+function splitMessageSources(content: string) {
+  const marker = /(?:\n\n|\n)(Fuentes consultadas:|Sources consulted:|Fontes consultadas:|Sources consultees:)\s*/i;
+  const parts = content.split(marker);
+  if (parts.length < 3) return { body: content, sources: [] as string[] };
+
+  const sources = parts.slice(2).join("\n").split("\n")
+    .map((line) => line.replace(/^\s*\d+\.\s*/, "").trim())
+    .filter((line) => /^https?:\/\//i.test(line));
+
+  return {
+    body: parts[0].trim(),
+    sources
+  };
+}
+
+function friendlySourceLabel(source: string) {
+  try {
+    const url = new URL(source);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return source;
+  }
 }
 
 function MessageActions({

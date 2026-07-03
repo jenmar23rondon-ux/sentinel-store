@@ -1,123 +1,108 @@
 # Aether
 
-**Personal AI Second Brain** para organizar tu vida, aprender mas rapido, controlar tareas, analizar informacion y ahorrar tiempo con IA.
+**Personal AI Second Brain - OS with memory, tasks, web search, vision AI and multi-provider support.**
 
-Aether no busca ser "otro chatbot". La idea es construir un centro de control personal con memoria, herramientas, automatizaciones, busqueda web, analisis de imagenes, multiples modelos de IA e integraciones autorizadas con tus servicios.
+Aether is a full-stack personal AI workspace designed to help you organize your life, learn faster, manage goals, track career progress, analyze information, and save time with AI-assisted workflows.
 
-## Estado actual
+It is not just a chatbot. The goal is to build a private command center with long-term memory, conversations, tasks, web search, visual analysis, offline support, world intelligence, career tracking, and optional integrations with AI providers and productivity tools.
 
-Este repositorio ya incluye un MVP funcional:
+![Aether dashboard](docs/assets/aether-dashboard.png)
 
-- Chat con IA y memoria persistente.
-- Tareas y pendientes.
-- Busqueda web.
-- Vision AI para analizar imagenes, capturas y errores visuales.
-- Vision Memory para guardar analisis de imagenes.
-- Selector de proveedor: `auto`, `OpenAI`, `Claude`, `Gemini`, `Ollama` o `local`.
-- Selector de idioma: espanol, ingles, portugues y frances.
-- Tema claro y tema oscuro.
-- Interfaz responsive para Android y navegadores moviles.
-- Modulos interactivos para activar ideas del segundo cerebro y convertirlas en tareas.
-- Action Center para preparar agendas, mensajes, correos, recordatorios y automatizaciones.
-- Deteccion inicial de intenciones desde el chat: si pides agendar o enviar algo, Aether crea una accion pendiente.
-- Career Dashboard con aplicaciones, estados, recruiters, salario esperado, recordatorios y asistente IA.
-- Soporte offline con PWA + Workbox + IndexedDB/Dexie.
-- Sync offline/online para Career Tracker.
-- WebSockets para refrescar eventos de carrera, actividad y notificaciones en tiempo real.
-- Activity Tracker inicial para GPS autorizado, tiempo en apps registrado manualmente y eventos.
-- Toggle para apagar/encender notificaciones.
-- Migracion PostgreSQL y script JSON -> PostgreSQL.
-- World Pulse con noticias por pais/ciudad, globo interactivo, monedas, peso colombiano, oro y ranking PIB.
-- Video AI con Gemini 1.5 Pro para subir videos o analizar una URL de YouTube.
-- Notebook/Studio con fuentes, notas y outputs tipo audio/video overview, reportes, quiz y data table.
-- Agent Lab para preparar automatizaciones como llenar formularios, sugerir mensajes o tareas de navegador.
-- Manifest PWA para usarlo desde Chrome como app instalada.
-- Dashboard web en React.
-- Backend en Node.js + TypeScript.
-- Persistencia local en JSON para desarrollo rapido.
+## Highlights
 
-Cuando no hay claves de IA, funciona en modo local. Cuando agregas claves en `.env`, usa proveedores reales.
+- AI chat with persistent conversation history.
+- Conversation sidebar with create, switch and delete actions.
+- Multi-provider AI selector: `Auto`, `OpenAI`, `Gemini`, `Claude`, `Ollama`, or `Local`.
+- Web search with Serper support and fallback search.
+- Compact source references for web-grounded answers.
+- Personal memory system.
+- Task manager and action center.
+- Notebook-style workspace with sources, notes and studio outputs.
+- Vision AI for images, screenshots, visual errors and OCR-ready workflows.
+- Video AI using Gemini for video uploads or YouTube URLs.
+- Career dashboard for job applications, recruiters, salary expectations and reminders.
+- Offline-first PWA support with Workbox and IndexedDB/Dexie.
+- World Pulse with country news, currencies, Colombian peso, gold, Bitcoin and GDP ranking.
+- Activity tracker foundation for location, app usage and notifications.
+- Light and dark themes.
+- Language selector: Spanish, English, Portuguese and French.
+- Responsive layout optimized for desktop and Android PWA usage.
 
-## Ejecutar localmente
+## Tech Stack
 
-### Opcion rapida en Windows
+- **Frontend:** React, TypeScript, Vite
+- **Backend:** Node.js, Express, TypeScript
+- **Storage:** JSON for local development, PostgreSQL migration included
+- **Offline:** Workbox, IndexedDB, Dexie.js
+- **Realtime:** WebSockets
+- **AI Providers:** OpenAI, Google Gemini, Anthropic Claude, Ollama
+- **Search:** Serper API with fallback search
+- **Deployment:** Railway-ready
 
-Haz doble clic en:
+## Quick Start
+
+### Windows
+
+Double-click:
 
 ```text
 run-aether.bat
 ```
 
-Ese archivo hace esto automaticamente:
+The script will:
 
-- Verifica que Node.js y npm existan.
-- Crea `backend/.env` desde `.env.example` si aun no existe.
-- Instala dependencias si falta `node_modules`.
-- Inicia backend y frontend.
-- Abre `http://localhost:5173` en el navegador.
+- Check Node.js and npm.
+- Create `backend/.env` from `.env.example` if needed.
+- Install dependencies.
+- Start backend and frontend.
+- Open `http://localhost:5173`.
 
-Para detener la app, vuelve a la ventana del `.bat` y presiona `Ctrl+C`.
+To stop the app, go back to the terminal window and press `Ctrl+C`.
 
-### Opcion manual
+### Manual Run
 
 ```bash
-cd aether-ai
 npm install
 npm run dev
 ```
 
-Servicios:
+Local services:
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:4100`
 
-En Android:
+## Android PWA
 
-1. Abre `http://TU-IP-LOCAL:5173` desde Chrome si el servidor corre en tu PC.
-2. En el menu de Chrome toca **Agregar a pantalla de inicio**.
-3. Aether se abrira como una app web instalada.
+To use Aether on Android:
 
-Si lo usas en el mismo equipo, abre `http://localhost:5173`.
+1. Start the app locally or deploy it.
+2. Open the frontend URL in Chrome.
+3. Tap **Add to Home screen** or use the in-app install button.
+4. Launch Aether like a mobile app.
 
-Build:
+For local mobile testing from your phone, use your computer LAN IP instead of `localhost`.
 
-```bash
-npm run build
+Example:
+
+```text
+http://192.168.1.20:5173
 ```
 
-## PostgreSQL
+## Environment Variables
 
-El MVP sigue funcionando con JSON local para desarrollo rapido, pero ya incluye migracion PostgreSQL.
-
-1. Crea una base de datos PostgreSQL.
-2. Configura `DATABASE_URL` en `backend/.env`.
-3. Ejecuta el SQL:
-
-```bash
-psql "$DATABASE_URL" -f backend/migrations/001_initial_postgres.sql
-```
-
-4. Migra datos JSON existentes a PostgreSQL:
-
-```bash
-npm run db:migrate-json --workspace backend
-```
-
-## Configuracion
-
-Copia `.env.example` a `backend/.env`:
+Copy `.env.example` to `backend/.env`:
 
 ```bash
 cp .env.example backend/.env
 ```
 
-En Windows PowerShell:
+PowerShell:
 
 ```powershell
 Copy-Item .env.example backend/.env
 ```
 
-Variables principales:
+Main variables:
 
 ```env
 PORT=4100
@@ -131,6 +116,7 @@ ANTHROPIC_MODEL=claude-3-5-sonnet-latest
 
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-1.5-flash
+GEMINI_VIDEO_MODEL=gemini-1.5-pro
 
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1
@@ -138,352 +124,210 @@ OLLAMA_MODEL=llama3.1
 SERPER_API_KEY=
 ```
 
-### Conectar otras IAs
+## Connecting AI Providers
 
-Aether puede responder con tres niveles:
+Aether works in local mode without external keys, but stronger answers require provider API keys.
 
-- `Auto`: usa la primera IA configurada y, si no hay una clave valida, cae a busqueda web + modo local.
-- `OpenAI`, `Claude`, `Gemini`: requieren una API key real.
-- `Ollama`: requiere tener Ollama corriendo en tu PC.
+Provider behavior:
 
-En Railway o en `backend/.env`, agrega solo las claves que tengas:
+- **Auto:** chooses the best configured provider.
+- **OpenAI:** requires `OPENAI_API_KEY`.
+- **Gemini:** requires `GEMINI_API_KEY`.
+- **Claude:** requires `ANTHROPIC_API_KEY`.
+- **Ollama:** requires Ollama running locally.
+- **Local:** no external AI cost, but less capable.
+- **Serper:** not an AI model; it powers web search and current references.
+
+Railway variables example:
 
 ```env
 OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_MODEL=gpt-4.1-mini
+
 GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-1.5-flash
+GEMINI_VIDEO_MODEL=gemini-1.5-pro
+
 SERPER_API_KEY=...
 ```
 
-Para Ollama local:
+Do not commit real API keys to GitHub.
 
-```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1
-```
-
-Despues de cambiar variables, reinicia el backend o redeploya Railway. No uses valores de ejemplo como `tu_openai_key`; Aether los detecta como no configurados.
-
-## Modulos del MVP
+## Main Modules
 
 ### Chat Assistant
 
-Permite conversar con Aether, guardar conversaciones y usar contexto personal.
+Ask questions, create tasks, store memories, use web search and continue separate conversations.
 
-Ejemplos:
-
-```text
-Recuerda que mi meta es backend y ciberseguridad
-Tarea: estudiar Docker manana
-Que deberia estudiar hoy?
-```
-
-### Memory System
-
-Guarda datos importantes sobre:
-
-- Metas.
-- Preferencias.
-- Proyectos.
-- Aprendizaje.
-- Carrera.
-- Personas.
-- Errores frecuentes.
-
-### Task Manager
-
-Permite crear tareas, marcarlas como completadas y priorizarlas.
-
-### Action Center
-
-Permite pedirle cosas al agente y convertirlas en acciones revisables:
+Examples:
 
 ```text
-Agenda una reunion con Juan manana a las 3 pm
-Envia un mensaje a Carlos diciendo: "Llegare a las 3 pm"
-Prepara un correo para el recruiter
-Recuérdame estudiar Docker manana
+Remember that my goal is backend and cybersecurity.
+Task: study Docker tomorrow.
+What should I study today?
+Create a chart with my focus hours: Monday 2, Tuesday 3.
 ```
 
-Por seguridad, Aether no envia mensajes ni correos sin aprobacion. Primero crea una accion pendiente. Cuando se conecten Gmail, Calendar, WhatsApp, Telegram o Microsoft mediante APIs oficiales/OAuth, esas acciones podran ejecutarse desde el mismo panel.
+### Notebook
+
+Collect sources, write notes and generate study outputs such as:
+
+- Audio overview
+- Video overview
+- Mind map
+- Reports
+- Flashcards
+- Quiz
+- Infographic
+- Data table
+
+### World Pulse
+
+Track what is happening globally:
+
+- News by country and city.
+- Interactive globe.
+- Currency rates.
+- Colombian peso.
+- Gold in USD and COP.
+- Bitcoin in USD and COP.
+- GDP ranking and growth probability.
+
+### Vision AI
+
+Analyze:
+
+- Photos
+- Screenshots
+- UI errors
+- Docker/terminal errors
+- Dashboards
+- Diagrams
+- Documents and visual notes
+
+### Video AI
+
+Upload a video or paste a YouTube URL and ask questions about it using Gemini.
 
 ### Career Dashboard
 
-Permite registrar vacantes:
+Track job applications:
 
-- Empresa.
-- Rol.
-- Fecha.
-- URL.
-- Estado: `applied`, `screening`, `interview`, `offer`, `rejected`.
-- Notas.
-- Recruiter.
-- Salario esperado.
-- Proxima accion.
+- Company
+- Role
+- Date
+- URL
+- Status
+- Notes
+- Recruiter name and email
+- Salary expectation
+- Next action reminder
 
-Incluye estadisticas de aplicaciones, tasa de respuesta, entrevistas y aplicaciones por semana. Tambien tiene prompts IA como:
+AI prompts include:
 
 ```text
-Prepare me for my interview with [company]
-Write a cover letter for [role]
+Prepare me for my interview with [company].
+Write a cover letter for [role].
 What questions will they ask at [company]?
 ```
 
+### Action Center
+
+Ask Aether to prepare actions such as:
+
+```text
+Schedule a meeting tomorrow at 3 PM.
+Draft a message to Carlos saying I will arrive at 3 PM.
+Prepare an email for the recruiter.
+Remind me to study Docker tomorrow.
+```
+
+For safety, Aether prepares actions for approval first. Sending emails, messages or calendar events requires future OAuth integrations.
+
 ### Offline/PWA
 
-La app usa Workbox para cachear assets y respuestas API, e IndexedDB con Dexie para guardar datos locales.
+Aether includes:
 
-Estrategia:
+- Service worker with Workbox.
+- Static asset caching.
+- API response caching.
+- IndexedDB local storage.
+- Offline chat/task/career cache foundation.
+- Sync strategy for offline career entries.
+
+Strategy:
 
 ```text
 Online  -> backend + IndexedDB
 Offline -> IndexedDB
-Online de nuevo -> sync al backend
+Back online -> sync queued changes
 ```
 
-Actualmente el sync offline esta implementado para Career Tracker y la cache local cubre tareas e historial de chat.
+## PostgreSQL
 
-### Activity Tracker
+The MVP can run with JSON storage, but PostgreSQL migration support is included.
 
-Incluye una base para:
+1. Create a PostgreSQL database.
+2. Set `DATABASE_URL` in `backend/.env`.
+3. Run:
 
-- GPS/check-ins con permiso del navegador.
-- Tiempo en apps registrado manualmente.
-- Historial de actividades.
-- Configuracion para apagar/encender notificaciones.
+```bash
+psql "$DATABASE_URL" -f backend/migrations/001_initial_postgres.sql
+```
 
-Limitacion importante: una PWA en Android no puede leer automaticamente todo el uso de otras apps sin permisos nativos. Para tracking automatico real se necesita una app Android/React Native con permisos de Usage Access, notificaciones y ubicacion.
+4. Migrate existing JSON data:
 
-### Web Search
+```bash
+npm run db:migrate-json --workspace backend
+```
 
-Permite consultar informacion actual. Si `SERPER_API_KEY` esta configurada, usa Serper. Si no, usa DuckDuckGo Instant Answer como fallback.
+## Build
 
-### World Pulse
+```bash
+npm run build
+```
 
-Una seccion para entender que esta pasando en el mundo:
+Build individual workspaces:
 
-- Noticias importantes por pais y ciudad.
-- Globo mundial interactivo con puntos de noticia y animacion tipo planeta.
-- Noticias adaptadas al idioma seleccionado: ES, EN, PT o FR.
-- Monedas importantes y peso colombiano.
-- Oro usando feed publico de Yahoo Finance.
-- Bitcoin usando CoinGecko.
-- Ranking de paises por PIB y probabilidad estimada de crecimiento.
+```bash
+npm run build --workspace frontend
+npm run build --workspace backend
+```
 
-Las noticias usan feeds RSS publicos y monedas usan una API abierta. Para datos financieros de produccion conviene conectar proveedores oficiales/pagos.
+## Deployment Notes
 
-### Vision AI
+For Railway:
 
-Permite subir imagenes o capturas y analizarlas con un modelo multimodal.
+- Deploy the backend service.
+- Add backend environment variables in Railway.
+- Generate a public backend domain.
+- Deploy the frontend with `VITE_API_URL` pointing to the backend URL.
 
-Casos de uso:
-
-- Capturas de errores de Windows, Linux, Docker, Railway, Vercel o AWS.
-- Pantallas de VS Code, IntelliJ, terminales y logs.
-- Capturas de Wireshark, Burp Suite, OWASP ZAP, SIEM o Nmap.
-- Graficos, diagramas UML y arquitecturas.
-- Fotos de hardware, puertos, cables o componentes.
-- Imagenes de documentos para extraer informacion.
-
-Si no hay proveedor multimodal configurado, Aether guarda la imagen y responde con una guia local. Para analisis real de pixeles/OCR, configura OpenAI, Claude, Gemini u Ollama con un modelo compatible con vision.
-
-### Video AI
-
-Permite subir un video o pegar una URL de YouTube y hacer preguntas. Usa Gemini cuando configuras:
+Example frontend variable:
 
 ```env
-GEMINI_API_KEY=
-GEMINI_VIDEO_MODEL=gemini-1.5-pro
+VITE_API_URL=https://your-backend.up.railway.app
 ```
 
-Si no hay clave, responde en modo local indicando que falta configuracion.
+## Current Limitations
 
-### Notebook/Studio
+- Gmail, Calendar, Microsoft 365, WhatsApp and Telegram actions are planned integrations and require official APIs/OAuth.
+- Automatic Android app usage tracking requires a native Android/React Native app with Usage Access permissions.
+- Location tracking requires explicit user permission.
+- Claude API usage is billed separately from Claude web/app subscriptions.
+- Some providers may require billing to be enabled before API keys work.
 
-Inspirado en flujos tipo NotebookLM:
+## Roadmap
 
-- Agregar fuentes.
-- Guardar notas.
-- Preparar outputs: Audio Overview, Video Overview, Mind Map, Reports, Flashcards, Quiz, Infographic y Data Table.
+- Full PostgreSQL persistence.
+- OAuth integrations for Gmail, Calendar, GitHub and Microsoft 365.
+- Native Android companion app.
+- Real notification scheduling.
+- Advanced charts generated from natural language.
+- Better document ingestion for PDF, Word, Excel and PowerPoint.
+- Agent browser automation with permission checkpoints.
+- Long-term semantic memory and retrieval.
 
-### Agent Lab
+## License
 
-Permite preparar automatizaciones:
-
-- Llenar formularios.
-- Sugerir mensajes para enviar a personas.
-- Preparar tareas de navegador.
-
-Por seguridad, las acciones se crean como pendientes y deben aprobarse antes de ejecutarse.
-
-
-### Experiencia interactiva
-
-La interfaz incluye:
-
-- Logo con escudo, ojo y target.
-- Hover/tap states en tarjetas, botones, modulos, busquedas y mensajes.
-- Botones bajo respuestas del chat para copiar, reproducir, valorar y reintentar.
-- Animacion de pensamiento con el logo de Aether: letra A, orbitas y punto luminoso.
-- Selector de idioma custom con animacion, sin dropdown nativo.
-- Sidebar configurable: modo compacto y opcion para ocultar secciones que no uses.
-- Paneles configurables: minimizar, agrandar, mover arriba/abajo y persistir orden.
-- Descarga PDF de reportes como Mundo actual y Estadisticas.
-- Panel de Estadisticas con barras, tablas visuales y probabilidades.
-- Globo interactivo con imagen real de la Tierra y arrastre con mouse/touch.
-- Navegacion por secciones para pantallas pequenas.
-- Tema claro/oscuro persistente.
-- Idiomas `ES`, `EN`, `PT` y `FR`.
-- Modulos clicables para activar areas como carrera, aprendizaje, ciberseguridad, documentos, reuniones, voz, mobile, finanzas, salud, Gmail, GitHub y objetivos.
-- Boton para convertir cualquier modulo en una tarea.
-
-## Arquitectura actual
-
-```text
-React Frontend
-      |
-      v
-Node.js Aether Backend
-      |
-      +-- Chat AI
-      +-- Memory System
-      +-- Task Manager
-      +-- Web Search
-      +-- Vision AI
-      +-- Provider Router
-             |
-             +-- OpenAI
-             +-- Claude
-             +-- Gemini
-             +-- Ollama
-             +-- Local fallback
-```
-
-## Vision del producto
-
-```text
-Aether
-|
-+-- Chat Assistant
-+-- Vision AI
-+-- Voice Assistant
-+-- Meeting Assistant
-+-- Subtitle Assistant
-+-- Screen Analyzer
-+-- Career Dashboard
-+-- Time Tracker
-+-- Goal Tracker
-+-- Memory System
-+-- Project Manager
-+-- Cybersecurity Assistant
-+-- Gmail / Calendar / GitHub
-+-- Microsoft 365 / Excel / Word / PowerPoint
-+-- WhatsApp / Telegram
-+-- Mobile App
-+-- Plugin System
-+-- Life Timeline
-```
-
-## Roadmap recomendado
-
-### Fase 1: Segundo cerebro base
-
-- Chat con memoria.
-- Tareas.
-- Dashboard.
-- Busqueda web.
-- Vision AI.
-- Historial de imagenes analizadas.
-
-### Fase 2: Productividad y carrera
-
-- Objetivos y progreso.
-- Seguimiento de aprendizaje.
-- Vacantes aplicadas.
-- Entrevistas.
-- CV y LinkedIn.
-- Compatibilidad entre vacantes y perfil.
-- GitHub integration.
-
-### Fase 3: Integraciones personales
-
-- Gmail.
-- Google Calendar.
-- Microsoft 365.
-- Excel.
-- Word.
-- PowerPoint.
-- Notificaciones inteligentes.
-
-### Fase 4: Ciberseguridad
-
-- Noticias de amenazas.
-- CVEs.
-- MITRE ATT&CK.
-- OWASP.
-- NIST.
-- IOC.
-- YARA.
-- Integracion con SecureWatch, ThreatLens y VulnScope.
-
-### Fase 5: Voz, reuniones y subtitulos
-
-- Dictado por voz.
-- Respuestas habladas.
-- Resumen de reuniones.
-- Extraccion de tareas.
-- Subtitulos y sugerencias en entrevistas, siempre con permiso.
-
-### Fase 6: App movil
-
-- React Native.
-- Camara.
-- Notificaciones.
-- Acciones rapidas.
-- Compartir contenido hacia Aether.
-- Aprobacion de automatizaciones.
-
-### Fase 7: Automatizaciones
-
-Ejemplo:
-
-```text
-Si un deploy falla
-  -> crear issue
-  -> guardar log
-  -> avisar por correo
-  -> sugerir solucion
-```
-
-## Seguridad y privacidad
-
-Aether debe construirse con seguridad desde el inicio:
-
-- Usar APIs oficiales.
-- Pedir permisos explicitos.
-- No controlar apps o dispositivos sin autorizacion.
-- Cifrar secretos.
-- Registrar acciones importantes.
-- Pedir confirmacion antes de enviar correos, borrar archivos, publicar contenido o ejecutar automatizaciones sensibles.
-- Separar datos personales de datos de prueba.
-
-## Siguiente mejora tecnica
-
-Para pasar de MVP local a producto serio:
-
-- PostgreSQL + Prisma.
-- Redis para colas y jobs.
-- OAuth para Gmail, Calendar, GitHub y Microsoft.
-- FastAPI para RAG, OCR y embeddings.
-- S3 o Cloudflare R2 para imagenes/documentos.
-- WebSockets para tiempo real.
-- Autenticacion con JWT/session segura.
-
-## Nombre
-
-```text
-Aether
-Personal AI Second Brain
-```
-
-La meta es que te ayude a llevar control de todo: aprendizaje, carrera, proyectos, ciberseguridad, tareas, documentos, reuniones y decisiones. Un asistente que recuerde, analice, priorice y te ayude a ahorrar tiempo.
+MIT

@@ -8,6 +8,28 @@ It is not just a chatbot. The goal is to build a private command center with lon
 
 ![Aether dashboard](docs/assets/aether-dashboard.png)
 
+## Screenshots
+
+### AI workspace dashboard
+
+![Aether dashboard](docs/screenshots/sentinel-dashboard.png)
+
+### Navigation and workspace modules
+
+![Aether sidebar](docs/screenshots/sentinel-sidebar.png)
+
+### AI provider integrations
+
+![Aether integrations](docs/screenshots/sentinel-integrations.png)
+
+### Notes, memory and workflows
+
+![Aether notes](docs/screenshots/sentinel-notes.png)
+
+![Aether memory](docs/screenshots/sentinel-memory.png)
+
+![Aether workflows](docs/screenshots/sentinel-workflows.png)
+
 ## Highlights
 
 - AI chat with persistent conversation history.

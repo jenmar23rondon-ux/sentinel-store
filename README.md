@@ -148,6 +148,10 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1
 
 SERPER_API_KEY=
+
+GMAIL_USER=
+GMAIL_APP_PASSWORD=
+APP_BASE_URL=http://localhost:5173
 ```
 
 ## Connecting AI Providers
@@ -178,6 +182,20 @@ SERPER_API_KEY=...
 ```
 
 Do not commit real API keys to GitHub.
+
+## Email Login
+
+Aether includes a free guest mode and an email-code login foundation.
+
+For local testing, if Gmail is not configured, the backend returns a dev code and logs it in the console. For real email delivery through Gmail, create a Google App Password and set:
+
+```env
+GMAIL_USER=your_email@gmail.com
+GMAIL_APP_PASSWORD=your_google_app_password
+APP_BASE_URL=https://your-aether-url.com
+```
+
+The login flow sends a 6-digit verification code and creates a 30-day session.
 
 ## Main Modules
 

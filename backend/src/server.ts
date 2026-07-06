@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { nanoid } from "nanoid";
+import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import { WebSocketServer } from "ws";
 import { z } from "zod";
@@ -39,6 +40,48 @@ app.get("/api/bootstrap", async (_req, res) => {
     providers: providerStatus(),
     integrations: integrationStatus()
   });
+});
+
+app.post("/api/auth/request-code", async (req, res, next) => {
+  try {
+    const body = z.object({ email: z.string().email() }).parse(req.body);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await db.createVerificationCode(body.email, code);
+    const sent = await sendVerificationEmail(body.email, code);
+    res.json({
+      ok: true,
+      delivery: sent ? "email" : "dev",
+      devCode: sent ? undefined : code
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/verify-code", async (req, res, next) => {
+  try {
+    const body = z.object({ email: z.string().email(), code: z.string().min(6).max(6) }).parse(req.body);
+    const verified = await db.verifyCode(body.email, body.code);
+    if (!verified) return res.status(401).json({ error: "Invalid or expired verification code" });
+    const user = await db.upsertUser(body.email);
+    const session = await db.createSession(user.id);
+    res.json({ token: session.token, user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/auth/me", async (req, res) => {
+  const token = readBearerToken(req);
+  if (!token) return res.json({ user: null });
+  const auth = await db.findSession(token);
+  res.json({ user: auth?.user ?? null });
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+  const token = readBearerToken(req);
+  if (token) await db.deleteSession(token);
+  res.status(204).send();
 });
 
 app.post("/api/chat", async (req, res, next) => {
@@ -467,6 +510,34 @@ wss.on("connection", (socket) => {
 server.listen(env.port, () => {
   console.log(`Aether backend running on http://localhost:${env.port}`);
 });
+
+function readBearerToken(req: express.Request) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return "";
+  return header.slice("Bearer ".length).trim();
+}
+
+async function sendVerificationEmail(email: string, code: string) {
+  if (!env.gmailUser || !env.gmailAppPassword) {
+    console.log(`[Aether auth] Verification code for ${email}: ${code}`);
+    return false;
+  }
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: env.gmailUser,
+      pass: env.gmailAppPassword
+    }
+  });
+  await transporter.sendMail({
+    from: `Aether <${env.gmailUser}>`,
+    to: email,
+    subject: "Your Aether verification code",
+    text: `Your Aether verification code is ${code}. It expires in 10 minutes.`,
+    html: `<div style="font-family:Arial,sans-serif;line-height:1.5"><h2>Aether verification</h2><p>Your code is:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px">${code}</p><p>This code expires in 10 minutes.</p></div>`
+  });
+  return true;
+}
 
 function broadcast(message: unknown) {
   const raw = JSON.stringify(message);

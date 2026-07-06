@@ -135,6 +135,39 @@ export interface MessageFeedback {
   createdAt: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+  plan: "free" | "pro";
+  connections: {
+    gmail?: boolean;
+    calendar?: boolean;
+    github?: boolean;
+    microsoft365?: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthSession {
+  id: string;
+  userId: string;
+  token: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface VerificationCode {
+  id: string;
+  email: string;
+  code: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+}
+
 export interface Store {
   conversations: Conversation[];
   messages: Message[];
@@ -148,4 +181,7 @@ export interface Store {
   notificationSettings: NotificationSettings;
   toolCalls: ToolCall[];
   feedback: MessageFeedback[];
+  users: UserProfile[];
+  sessions: AuthSession[];
+  verificationCodes: VerificationCode[];
 }

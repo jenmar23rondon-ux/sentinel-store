@@ -1,13 +1,16 @@
-import type { ActionItem, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem, WorldPulse } from "../types";
+import type { ActionItem, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, UserProfile, VisionItem, WorldPulse } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4100";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit & { token?: string }): Promise<T> {
+  const { token, ...requestInit } = init ?? {};
+  const authToken = token ?? localStorage.getItem("aether-auth-token") ?? "";
   const response = await fetch(`${API_URL}${path}`, {
-    ...init,
+    ...requestInit,
     headers: {
       "Content-Type": "application/json",
-      ...(init?.headers ?? {})
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...(requestInit.headers ?? {})
     }
   });
   if (!response.ok) {
@@ -41,6 +44,22 @@ export const api = {
     }),
 
   deleteConversation: (id: string) => request<void>(`/api/conversations/${id}`, { method: "DELETE" }),
+
+  requestLoginCode: (email: string) =>
+    request<{ ok: boolean; delivery: "email" | "dev"; devCode?: string }>("/api/auth/request-code", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    }),
+
+  verifyLoginCode: (email: string, code: string) =>
+    request<{ token: string; user: UserProfile }>("/api/auth/verify-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code })
+    }),
+
+  me: (token: string) => request<{ user: UserProfile | null }>("/api/auth/me", { token }),
+
+  logout: (token: string) => request<void>("/api/auth/logout", { method: "POST", token }),
 
   addMemory: (content: string, tags: string[], importance: number) =>
     request<MemoryItem>("/api/memory", {

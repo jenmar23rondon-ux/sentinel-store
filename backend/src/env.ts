@@ -15,5 +15,8 @@ export const env = {
   geminiVideoModel: process.env.GEMINI_VIDEO_MODEL ?? "gemini-1.5-pro",
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.1",
-  serperApiKey: process.env.SERPER_API_KEY
+  serperApiKey: process.env.SERPER_API_KEY,
+  gmailUser: process.env.GMAIL_USER,
+  gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
+  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173"
 };

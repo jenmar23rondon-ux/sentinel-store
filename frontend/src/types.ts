@@ -24,6 +24,22 @@ export interface MessageFeedback {
   createdAt: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string;
+  plan: "free" | "pro";
+  connections: {
+    gmail?: boolean;
+    calendar?: boolean;
+    github?: boolean;
+    microsoft365?: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MemoryItem {
   id: string;
   content: string;

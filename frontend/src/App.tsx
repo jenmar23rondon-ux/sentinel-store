@@ -24,6 +24,7 @@ import {
   ImagePlus,
   KeyRound,
   Languages,
+  LogOut,
   Loader2,
   Mail,
   MapPin,
@@ -33,6 +34,7 @@ import {
   Minimize2,
   Moon,
   Newspaper,
+  Pencil,
   Play,
   Plus,
   RefreshCw,
@@ -46,6 +48,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   Trash2,
+  UserCircle,
   Video,
   Wand2,
   WalletCards,
@@ -56,7 +59,7 @@ import { registerSW } from "virtual:pwa-register";
 import { api } from "./services/api";
 import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
 import { offlineDb, queueSync } from "./services/offlineDb";
-import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, VisionItem } from "./types";
+import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, UserProfile, VisionItem } from "./types";
 import type { WorldPulse } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
@@ -594,6 +597,13 @@ const moduleCatalog = [
 export function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [authUser, setAuthUser] = useState<UserProfile | null>(null);
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem("aether-auth-token") || "");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authCode, setAuthCode] = useState("");
+  const [authStep, setAuthStep] = useState<"email" | "code">("email");
+  const [authDevCode, setAuthDevCode] = useState("");
   const [memory, setMemory] = useState<MemoryItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [vision, setVision] = useState<VisionItem[]>([]);
@@ -671,6 +681,7 @@ export function App() {
   const [visionPrompt, setVisionPrompt] = useState(translations.es.visionPrompt);
   const [visionImage, setVisionImage] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
   const [error, setError] = useState("");
 
   const t = translations[language];
@@ -748,6 +759,26 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("aether-notes", JSON.stringify(notes));
   }, [notes]);
+
+  useEffect(() => {
+    if (!authToken) {
+      setAuthUser(null);
+      return;
+    }
+    api.me(authToken)
+      .then((data) => {
+        setAuthUser(data.user);
+        if (!data.user) {
+          localStorage.removeItem("aether-auth-token");
+          setAuthToken("");
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem("aether-auth-token");
+        setAuthToken("");
+        setAuthUser(null);
+      });
+  }, [authToken]);
 
   useEffect(() => {
     const goOnline = () => {
@@ -850,6 +881,55 @@ export function App() {
     event.preventDefault();
     if (!chatInput.trim()) return;
     await submitChat(chatInput.trim());
+  }
+
+  function editMessage(message: Message) {
+    setChatInput(message.content);
+    setActiveView("chat");
+  }
+
+  async function requestAuthCode(event: FormEvent) {
+    event.preventDefault();
+    if (!authEmail.trim()) return;
+    setAuthBusy(true);
+    setError("");
+    try {
+      const result = await api.requestLoginCode(authEmail.trim());
+      setAuthStep("code");
+      setAuthDevCode(result.devCode ?? "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send login code");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function verifyAuthCode(event: FormEvent) {
+    event.preventDefault();
+    if (!authEmail.trim() || !authCode.trim()) return;
+    setAuthBusy(true);
+    setError("");
+    try {
+      const result = await api.verifyLoginCode(authEmail.trim(), authCode.trim());
+      localStorage.setItem("aether-auth-token", result.token);
+      setAuthToken(result.token);
+      setAuthUser(result.user);
+      setAuthOpen(false);
+      setAuthCode("");
+      setAuthDevCode("");
+      setAuthStep("email");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid code");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function logout() {
+    if (authToken) await api.logout(authToken).catch(() => undefined);
+    localStorage.removeItem("aether-auth-token");
+    setAuthToken("");
+    setAuthUser(null);
   }
 
   function startNewConversation() {
@@ -1418,6 +1498,68 @@ export function App() {
         aria-hidden="true"
       />
       {mobileNavOpen && <button className="sidebar-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation" />}
+      {authOpen && (
+        <div className="auth-overlay" role="dialog" aria-modal="true">
+          <section className="auth-card">
+            <div className="auth-head">
+              <div>
+                <strong>{authUser ? "Your Aether profile" : "Sign in to save your workspace"}</strong>
+                <span>{authUser ? "Manage your free profile and future connections." : "Free mode works for everyone. Sign in saves your profile and connections."}</span>
+              </div>
+              <button onClick={() => setAuthOpen(false)} title="Close"><X size={18} /></button>
+            </div>
+
+            {authUser ? (
+              <div className="profile-card">
+                <div className="profile-avatar">{(authUser.name ?? authUser.email).slice(0, 1).toUpperCase()}</div>
+                <div>
+                  <strong>{authUser.name ?? "Aether user"}</strong>
+                  <span>{authUser.email}</span>
+                  <small>{authUser.plan.toUpperCase()} plan</small>
+                </div>
+                <div className="connection-list">
+                  <span>Gmail connection <em>{authUser.connections.gmail ? "Connected" : "Next step"}</em></span>
+                  <span>Calendar connection <em>{authUser.connections.calendar ? "Connected" : "Next step"}</em></span>
+                  <span>GitHub connection <em>{authUser.connections.github ? "Connected" : "Next step"}</em></span>
+                  <span>Microsoft 365 <em>{authUser.connections.microsoft365 ? "Connected" : "Next step"}</em></span>
+                </div>
+                <button className="wide-button text-button" onClick={logout}>
+                  <LogOut size={16} />
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <>
+                {authStep === "email" ? (
+                  <form className="auth-form" onSubmit={requestAuthCode}>
+                    <label>
+                      Email
+                      <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@gmail.com" />
+                    </label>
+                    <button className="wide-button text-button" disabled={authBusy}>
+                      {authBusy ? <Loader2 className="spin" size={16} /> : <Mail size={16} />}
+                      Send verification code
+                    </button>
+                  </form>
+                ) : (
+                  <form className="auth-form" onSubmit={verifyAuthCode}>
+                    <label>
+                      Verification code
+                      <input inputMode="numeric" value={authCode} onChange={(event) => setAuthCode(event.target.value)} placeholder="123456" />
+                    </label>
+                    {authDevCode && <p className="dev-code">Dev code: <strong>{authDevCode}</strong></p>}
+                    <button className="wide-button text-button" disabled={authBusy}>
+                      {authBusy ? <Loader2 className="spin" size={16} /> : <CheckCircle2 size={16} />}
+                      Verify and continue
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => setAuthStep("email")}>Use another email</button>
+                  </form>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+      )}
 
       <section className="workspace">
         <header className="topbar">
@@ -1436,6 +1578,10 @@ export function App() {
             <p>{activeView === "chat" ? "Aether responde con tus IAs, memoria y busqueda web." : t.commandCopy}</p>
           </div>
           <div className="control-cluster">
+            <button className="account-button" onClick={() => setAuthOpen(true)} title={authUser ? "Open profile" : "Sign in"}>
+              <UserCircle size={17} />
+              <span>{authUser ? authUser.name ?? authUser.email : "Free mode"}</span>
+            </button>
             {!isStandalone && (
               <button className="install-button" onClick={installApp} title={t.installApp}>
                 <Download size={17} />
@@ -1540,6 +1686,7 @@ export function App() {
                   <MessageActions
                     message={message}
                     onRetry={() => retryMessage(message)}
+                    onEdit={() => editMessage(message)}
                     onFeedback={(rating) => sendMessageFeedback(message, rating)}
                   />
                 </article>
@@ -2209,10 +2356,12 @@ function providerHint(provider: ProviderName, integrations: Record<string, { con
 function MessageActions({
   message,
   onRetry,
+  onEdit,
   onFeedback
 }: {
   message: Message;
   onRetry: () => void;
+  onEdit: () => void;
   onFeedback: (rating: "up" | "down") => void;
 }) {
   const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
@@ -2237,13 +2386,28 @@ function MessageActions({
 
   return (
     <div className="message-actions">
-      <button onClick={copyMessage} title="Copy"><Clipboard size={15} /></button>
-      {message.role === "assistant" && <button onClick={speakMessage} title="Play"><Play size={15} /></button>}
-      <button className={feedback === "up" ? "selected" : ""} onClick={() => rateMessage("up")} title="Like"><ThumbsUp size={15} /></button>
-      <button className={feedback === "down" ? "selected" : ""} onClick={() => rateMessage("down")} title="Dislike"><ThumbsDown size={15} /></button>
-      <button onClick={onRetry} title="Retry"><RefreshCw size={15} /></button>
+      {message.role === "user" ? (
+        <>
+          <span className="message-time">{formatMessageTime(message.createdAt)}</span>
+          <button onClick={onRetry} title="Retry"><RefreshCw size={15} /></button>
+          <button onClick={onEdit} title="Edit"><Pencil size={15} /></button>
+          <button onClick={copyMessage} title="Copy"><Clipboard size={15} /></button>
+        </>
+      ) : (
+        <>
+          <button onClick={copyMessage} title="Copy"><Clipboard size={15} /></button>
+          <button onClick={speakMessage} title="Play"><Play size={15} /></button>
+          <button className={feedback === "up" ? "selected" : ""} onClick={() => rateMessage("up")} title="Like"><ThumbsUp size={15} /></button>
+          <button className={feedback === "down" ? "selected" : ""} onClick={() => rateMessage("down")} title="Dislike"><ThumbsDown size={15} /></button>
+          <button onClick={onRetry} title="Retry"><RefreshCw size={15} /></button>
+        </>
+      )}
     </div>
   );
+}
+
+function formatMessageTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function actionLabel(status: ActionStatus, t: (typeof translations)["es"]) {

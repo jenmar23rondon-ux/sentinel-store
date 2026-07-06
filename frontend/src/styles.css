@@ -556,6 +556,7 @@ button {
 .control-select,
 .language-trigger,
 .provider-trigger,
+.account-button,
 .theme-toggle,
 .install-button {
   min-height: 40px;
@@ -576,6 +577,7 @@ button {
 .control-select:hover,
 .language-trigger:hover,
 .provider-trigger:hover,
+.account-button:hover,
 .theme-toggle:hover,
 .install-button:hover {
   border-color: var(--accent);
@@ -586,6 +588,7 @@ button {
 .control-select::after,
 .language-trigger::after,
 .provider-trigger::after,
+.account-button::after,
 .theme-toggle::after,
 .install-button::after {
   content: "";
@@ -599,6 +602,7 @@ button {
 .control-select:hover::after,
 .language-trigger:hover::after,
 .provider-trigger:hover::after,
+.account-button:hover::after,
 .theme-toggle:hover::after,
 .install-button:hover::after {
   transform: translateX(120%);
@@ -607,6 +611,7 @@ button {
 .control-select span,
 .language-trigger span,
 .provider-trigger span,
+.account-button span,
 .theme-toggle span,
 .install-button span {
   line-height: 1.12;
@@ -617,6 +622,18 @@ button {
   cursor: pointer;
   font-weight: 800;
   min-width: max-content;
+}
+
+.account-button {
+  cursor: pointer;
+  font-weight: 800;
+  max-width: 190px;
+}
+
+.account-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .language-picker,
@@ -911,6 +928,17 @@ button {
   transition: opacity 160ms ease, transform 160ms ease;
 }
 
+.message.user .message-actions {
+  justify-content: flex-end;
+}
+
+.message-time {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 4px;
+}
+
 .message:hover .message-actions {
   opacity: 1;
   transform: translateY(0);
@@ -939,6 +967,129 @@ button {
   background: var(--accent-soft);
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(4, 8, 12, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.auth-card {
+  width: min(100%, 470px);
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.auth-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth-head div,
+.auth-form,
+.profile-card {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-head strong {
+  font-size: 18px;
+}
+
+.auth-head span,
+.auth-form label,
+.profile-card span,
+.profile-card small,
+.dev-code {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auth-head button,
+.ghost-button {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.auth-form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.dev-code {
+  margin: 0;
+  border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 8px;
+  padding: 9px;
+  background: var(--accent-soft);
+}
+
+.profile-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.profile-avatar {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #111827, var(--accent));
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.connection-list {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+}
+
+.connection-list span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: var(--surface-2);
+}
+
+.connection-list em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 850;
+}
+
+.text-button {
+  width: 100%;
+  min-width: 0;
+  grid-column: 1 / -1;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  font-weight: 850;
 }
 
 .message-meta {
@@ -1839,8 +1990,8 @@ textarea:focus {
   padding: 12px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 35% 35%, rgba(125, 211, 252, 0.22), transparent 34%),
-    radial-gradient(circle at 72% 72%, rgba(109, 93, 252, 0.12), transparent 28%),
+    radial-gradient(circle at 35% 35%, rgba(125, 211, 252, 0.14), transparent 34%),
+    radial-gradient(circle at 72% 72%, rgba(45, 212, 191, 0.08), transparent 28%),
     var(--surface-2);
 }
 
@@ -1855,8 +2006,8 @@ textarea:focus {
   touch-action: none;
   background:
     radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.48), transparent 12%),
-    radial-gradient(circle at 46% 44%, #3dd8ff 0 19%, transparent 34%),
-    radial-gradient(circle at 62% 62%, rgba(14, 116, 144, 0.7), transparent 38%),
+    radial-gradient(circle at 46% 44%, rgba(61, 216, 255, 0.72) 0 19%, transparent 34%),
+    radial-gradient(circle at 62% 62%, rgba(14, 116, 144, 0.56), transparent 38%),
     linear-gradient(135deg, #0b4f8a 0%, #0f9fbc 45%, #052f68 100%);
   animation: globeBreathe 9s ease-in-out infinite;
   box-shadow:
@@ -1885,6 +2036,7 @@ textarea:focus {
   background-size: 200% 100%, 100% 100%, 100% 100%;
   background-position: 0 0, 0 0, 0 0;
   filter: saturate(1.12) contrast(1.04);
+  opacity: 0.72;
   animation: globeSpin 28s linear infinite;
   pointer-events: none;
 }
@@ -1905,11 +2057,11 @@ textarea:focus {
 
 .map-pin {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: #fbbf24;
-  box-shadow: 0 0 0 5px rgba(251, 191, 36, 0.18);
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.16);
   transform: translate(-50%, -50%);
   animation: pinPulse 1.8s ease-in-out infinite;
   z-index: 2;
@@ -1954,12 +2106,12 @@ textarea:focus {
 
 .map-pin.impact-high {
   background: #fb7185;
-  box-shadow: 0 0 0 5px rgba(251, 113, 133, 0.2);
+  box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.18);
 }
 
 .map-pin.impact-medium {
   background: #38bdf8;
-  box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
 }
 
 .news-list,
@@ -2603,6 +2755,7 @@ textarea:focus {
   .language-trigger,
   .provider-picker,
   .provider-trigger,
+  .account-button,
   .theme-toggle,
   .install-button {
     width: 100%;

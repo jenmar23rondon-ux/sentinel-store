@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import { env } from "./env.js";
-import type { ActionItem, ActivityEvent, Conversation, CustomChart, JobApplication, MemoryItem, Message, MessageFeedback, NotificationSettings, Store, TaskItem, ToolCall, VisionItem } from "./types.js";
+import type { ActionItem, ActivityEvent, Conversation, CustomChart, JobApplication, MemoryItem, Message, MessageFeedback, NotificationSettings, Store, TaskItem, ToolCall, UserProfile, VerificationCode, VisionItem } from "./types.js";
 
 const initialStore: Store = {
   conversations: [],
@@ -21,7 +21,10 @@ const initialStore: Store = {
     locationInsights: true
   },
   toolCalls: [],
-  feedback: []
+  feedback: [],
+  users: [],
+  sessions: [],
+  verificationCodes: []
 };
 
 let cache: Store | null = null;
@@ -47,6 +50,9 @@ async function ensureStore(): Promise<Store> {
     cache.notificationSettings ??= structuredClone(initialStore.notificationSettings);
     cache.toolCalls ??= [];
     cache.feedback ??= [];
+    cache.users ??= [];
+    cache.sessions ??= [];
+    cache.verificationCodes ??= [];
   } catch {
     cache = structuredClone(initialStore);
     await persist();
@@ -106,6 +112,85 @@ export const db = {
     const store = await ensureStore();
     store.conversations = store.conversations.filter((item) => item.id !== id);
     store.messages = store.messages.filter((item) => item.conversationId !== id);
+    await persist();
+  },
+
+  async createVerificationCode(email: string, code: string) {
+    const store = await ensureStore();
+    const now = new Date();
+    const item: VerificationCode = {
+      id: nanoid(),
+      email: email.toLowerCase(),
+      code,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 10 * 60 * 1000).toISOString()
+    };
+    store.verificationCodes.unshift(item);
+    store.verificationCodes = store.verificationCodes.slice(0, 50);
+    await persist();
+    return item;
+  },
+
+  async verifyCode(email: string, code: string) {
+    const store = await ensureStore();
+    const normalized = email.toLowerCase();
+    const item = store.verificationCodes.find((entry) => entry.email === normalized && entry.code === code && !entry.usedAt);
+    if (!item || new Date(item.expiresAt).getTime() < Date.now()) return null;
+    item.usedAt = new Date().toISOString();
+    await persist();
+    return item;
+  },
+
+  async upsertUser(email: string): Promise<UserProfile> {
+    const store = await ensureStore();
+    const normalized = email.toLowerCase();
+    const now = new Date().toISOString();
+    const existing = store.users.find((user) => user.email === normalized);
+    if (existing) {
+      existing.updatedAt = now;
+      await persist();
+      return existing;
+    }
+    const user: UserProfile = {
+      id: nanoid(),
+      email: normalized,
+      name: normalized.split("@")[0],
+      plan: "free",
+      connections: {},
+      createdAt: now,
+      updatedAt: now
+    };
+    store.users.unshift(user);
+    await persist();
+    return user;
+  },
+
+  async createSession(userId: string) {
+    const store = await ensureStore();
+    const now = new Date();
+    const session = {
+      id: nanoid(),
+      userId,
+      token: nanoid(48),
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    store.sessions.unshift(session);
+    await persist();
+    return session;
+  },
+
+  async findSession(token: string) {
+    const store = await ensureStore();
+    const session = store.sessions.find((item) => item.token === token);
+    if (!session || new Date(session.expiresAt).getTime() < Date.now()) return null;
+    const user = store.users.find((item) => item.id === session.userId);
+    return user ? { session, user } : null;
+  },
+
+  async deleteSession(token: string) {
+    const store = await ensureStore();
+    store.sessions = store.sessions.filter((item) => item.token !== token);
     await persist();
   },
 

@@ -6,6 +6,10 @@ Aether is a full-stack personal AI workspace designed to help you organize your 
 
 It is not just a chatbot. The goal is to build a private command center with long-term memory, conversations, tasks, web search, visual analysis, offline support, world intelligence, career tracking, and optional integrations with AI providers and productivity tools.
 
+## Live Demo
+
+[Open Aether / Sentinel AI OS](https://sentinel-store-frontend.vercel.app/)
+
 ![Aether dashboard](docs/assets/aether-dashboard.png)
 
 ## Screenshots

@@ -9,6 +9,7 @@ import {
   Brain,
   BriefcaseBusiness,
   CalendarDays,
+  Camera,
   CheckCircle2,
   ChevronDown,
   Circle,
@@ -65,6 +66,16 @@ import type { WorldPulse } from "./types";
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
 type ViewKey = "chat" | "world" | "analytics" | "video" | "notebook" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: { results: ArrayLike<{ 0?: { transcript?: string } }> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+};
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
 const defaultPanelOrder: ViewKey[] = ["notebook", "world", "analytics", "video", "actions", "career", "activity", "memory", "tasks", "search", "vision", "modules"];
 
@@ -604,6 +615,7 @@ export function App() {
   const [authCode, setAuthCode] = useState("");
   const [authStep, setAuthStep] = useState<"email" | "code">("email");
   const [authDevCode, setAuthDevCode] = useState("");
+  const [faceCheckStatus, setFaceCheckStatus] = useState("Not checked");
   const [memory, setMemory] = useState<MemoryItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [vision, setVision] = useState<VisionItem[]>([]);
@@ -682,6 +694,7 @@ export function App() {
   const [visionImage, setVisionImage] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
   const [error, setError] = useState("");
 
   const t = translations[language];
@@ -930,6 +943,67 @@ export function App() {
     localStorage.removeItem("aether-auth-token");
     setAuthToken("");
     setAuthUser(null);
+  }
+
+  function startVoiceInput() {
+    const SpeechRecognition = (window as unknown as {
+      SpeechRecognition?: SpeechRecognitionCtor;
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    }).SpeechRecognition ?? (window as unknown as {
+      webkitSpeechRecognition?: SpeechRecognitionCtor;
+    }).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setError("Voice input is not supported in this browser. Try Chrome on Android or desktop.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = language === "en" ? "en-US" : language === "pt" ? "pt-BR" : language === "fr" ? "fr-FR" : "es-ES";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    setVoiceListening(true);
+
+    recognition.onresult = (event) => {
+      const text = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? "")
+        .join(" ")
+        .trim();
+      if (text) setChatInput(text);
+    };
+    recognition.onerror = () => {
+      setVoiceListening(false);
+      setError("I could not capture your voice. Check microphone permission.");
+    };
+    recognition.onend = () => setVoiceListening(false);
+    recognition.start();
+  }
+
+  async function runFacePresenceCheck() {
+    setFaceCheckStatus("Opening camera...");
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+      await new Promise((resolve) => setTimeout(resolve, 650));
+
+      const FaceDetectorCtor = (window as unknown as { FaceDetector?: new () => { detect: (source: HTMLVideoElement) => Promise<unknown[]> } }).FaceDetector;
+      if (!FaceDetectorCtor) {
+        setFaceCheckStatus("Camera ready. FaceDetector is not available in this browser.");
+        return;
+      }
+
+      const detector = new FaceDetectorCtor();
+      const faces = await detector.detect(video);
+      setFaceCheckStatus(faces.length > 0 ? "Face present. No biometric identity stored." : "No face detected.");
+    } catch {
+      setFaceCheckStatus("Camera permission denied or unavailable.");
+    } finally {
+      stream?.getTracks().forEach((track) => track.stop());
+    }
   }
 
   function startNewConversation() {
@@ -1523,6 +1597,16 @@ export function App() {
                   <span>GitHub connection <em>{authUser.connections.github ? "Connected" : "Next step"}</em></span>
                   <span>Microsoft 365 <em>{authUser.connections.microsoft365 ? "Connected" : "Next step"}</em></span>
                 </div>
+                <div className="face-check">
+                  <span>
+                    <strong>Local face presence</strong>
+                    <small>{faceCheckStatus}</small>
+                  </span>
+                  <button onClick={runFacePresenceCheck}>
+                    <Camera size={16} />
+                    Check
+                  </button>
+                </div>
                 <button className="wide-button text-button" onClick={logout}>
                   <LogOut size={16} />
                   Sign out
@@ -1704,6 +1788,9 @@ export function App() {
             </div>
             <form className="composer" onSubmit={sendMessage}>
               <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder={t.chatPlaceholder} />
+              <button type="button" className={voiceListening ? "listening" : ""} onClick={startVoiceInput} title="Voice input">
+                {voiceListening ? <Loader2 className="spin" size={18} /> : <Mic size={18} />}
+              </button>
               <button type="submit" disabled={busy} title={t.send}>
                 {busy ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
               </button>

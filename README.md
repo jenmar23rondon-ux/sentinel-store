@@ -45,6 +45,8 @@ It is not just a chatbot. The goal is to build a private command center with lon
 - Task manager and action center.
 - Notebook-style workspace with sources, notes and studio outputs.
 - Vision AI for images, screenshots, visual errors and OCR-ready workflows.
+- Voice input for the chat using the browser speech recognition API.
+- Local face presence check for profile/security experiments without storing biometric identity.
 - Video AI using Gemini for video uploads or YouTube URLs.
 - Career dashboard for job applications, recruiters, salary expectations and reminders.
 - Offline-first PWA support with Workbox and IndexedDB/Dexie.
@@ -183,6 +185,25 @@ SERPER_API_KEY=...
 
 Do not commit real API keys to GitHub.
 
+### Connection Checklist
+
+| Connection | Variable | Used for | Status in app |
+| --- | --- | --- | --- |
+| OpenAI | `OPENAI_API_KEY` | Strong chat reasoning and multimodal responses | Integrations panel |
+| Gemini | `GEMINI_API_KEY` | Chat, Vision AI and Video AI | Integrations panel |
+| Claude | `ANTHROPIC_API_KEY` | Optional alternate reasoning model | Integrations panel |
+| Serper | `SERPER_API_KEY` | Better web search and current references | Integrations panel |
+| Ollama | `OLLAMA_BASE_URL` | Local models on your own machine | Integrations panel |
+| Gmail SMTP | `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Email verification codes | Login modal |
+
+You can verify the backend is alive at:
+
+```text
+GET /health
+GET /api/integrations
+GET /api/auth/me
+```
+
 ## Email Login
 
 Aether includes a free guest mode and an email-code login foundation.
@@ -211,6 +232,8 @@ Task: study Docker tomorrow.
 What should I study today?
 Create a chart with my focus hours: Monday 2, Tuesday 3.
 ```
+
+The chat composer includes a microphone button. On supported browsers, especially Chrome, Aether can transcribe your voice into the input box before sending.
 
 ### Notebook
 
@@ -248,6 +271,19 @@ Analyze:
 - Dashboards
 - Diagrams
 - Documents and visual notes
+
+### Local Face Presence Check
+
+Aether includes a privacy-safe camera check inside the profile modal. It can open the device camera and, when the browser supports `FaceDetector`, confirm whether a face is visible.
+
+Important boundaries:
+
+- It does **not** identify who the person is.
+- It does **not** compare faces.
+- It does **not** store face embeddings or biometric templates.
+- It runs locally in the browser and stops the camera after the check.
+
+This is a safe foundation for presence/liveness UX experiments, not biometric authentication.
 
 ### Video AI
 

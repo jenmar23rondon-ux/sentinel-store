@@ -51,6 +51,8 @@ import {
   Trash2,
   UserCircle,
   Video,
+  Volume2,
+  VolumeX,
   Wand2,
   WalletCards,
   WifiOff,
@@ -104,6 +106,13 @@ const translations = {
     modules: "Modulos",
     world: "Mundo",
     worldPulse: "Mundo actual",
+    autoUpdate: "Auto actualizar",
+    refreshNow: "Actualizar ahora",
+    updated: "Actualizado",
+    readAloud: "Leer texto",
+    stopReading: "Detener lectura",
+    autoVoice: "Voz auto",
+    voiceChat: "Hablar",
     analytics: "Estadísticas",
     downloadPdf: "Descargar PDF",
     minimize: "Minimizar",
@@ -230,6 +239,13 @@ const translations = {
     modules: "Modules",
     world: "World",
     worldPulse: "Current World",
+    autoUpdate: "Auto update",
+    refreshNow: "Refresh now",
+    updated: "Updated",
+    readAloud: "Read aloud",
+    stopReading: "Stop reading",
+    autoVoice: "Auto voice",
+    voiceChat: "Talk",
     analytics: "Statistics",
     downloadPdf: "Download PDF",
     minimize: "Minimize",
@@ -356,6 +372,13 @@ const translations = {
     modules: "Modulos",
     world: "Mundo",
     worldPulse: "Mundo atual",
+    autoUpdate: "Auto atualizar",
+    refreshNow: "Atualizar agora",
+    updated: "Atualizado",
+    readAloud: "Ler texto",
+    stopReading: "Parar leitura",
+    autoVoice: "Voz auto",
+    voiceChat: "Falar",
     analytics: "Estatísticas",
     downloadPdf: "Baixar PDF",
     minimize: "Minimizar",
@@ -482,6 +505,13 @@ const translations = {
     modules: "Modules",
     world: "Monde",
     worldPulse: "Monde actuel",
+    autoUpdate: "Auto actualiser",
+    refreshNow: "Actualiser",
+    updated: "Actualise",
+    readAloud: "Lire",
+    stopReading: "Arreter lecture",
+    autoVoice: "Voix auto",
+    voiceChat: "Parler",
     analytics: "Statistiques",
     downloadPdf: "Telecharger PDF",
     minimize: "Minimiser",
@@ -678,6 +708,9 @@ export function App() {
   const [careerPrompt, setCareerPrompt] = useState("Prepare me for my interview");
   const [careerAiReply, setCareerAiReply] = useState("");
   const [worldPulse, setWorldPulse] = useState<WorldPulse | null>(null);
+  const [worldRefreshing, setWorldRefreshing] = useState(false);
+  const [autoWorldRefresh, setAutoWorldRefresh] = useState(() => localStorage.getItem("aether-auto-world-refresh") !== "false");
+  const [lastWorldRefresh, setLastWorldRefresh] = useState("");
   const [chartPrompt, setChartPrompt] = useState("Crea una grafica de horas de estudio: lunes 2, martes 3, miercoles 1.5, jueves 4");
   const [chartKind, setChartKind] = useState<ChartKind>("bar");
   const [videoQuestion, setVideoQuestion] = useState("Resume este video y dime las ideas importantes.");
@@ -695,6 +728,10 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
+  const [autoReadResponses, setAutoReadResponses] = useState(() => localStorage.getItem("aether-auto-read-responses") === "true");
+  const [voiceConversation, setVoiceConversation] = useState(() => localStorage.getItem("aether-voice-conversation") === "true");
+  const [voiceReplyPending, setVoiceReplyPending] = useState(false);
+  const [lastSpokenMessageId, setLastSpokenMessageId] = useState("");
   const [error, setError] = useState("");
 
   const t = translations[language];
@@ -839,8 +876,46 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    api.worldPulse(language).then(setWorldPulse).catch(() => undefined);
-  }, [language]);
+    let mounted = true;
+    const refresh = async () => {
+      setWorldRefreshing(true);
+      try {
+        const data = await api.worldPulse(language);
+        if (!mounted) return;
+        setWorldPulse(data);
+        setLastWorldRefresh(new Date().toISOString());
+      } catch {
+        if (!mounted) return;
+      } finally {
+        if (mounted) setWorldRefreshing(false);
+      }
+    };
+
+    refresh();
+    if (!autoWorldRefresh) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const interval = window.setInterval(refresh, 4 * 60 * 1000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, [language, autoWorldRefresh]);
+
+  useEffect(() => {
+    localStorage.setItem("aether-auto-world-refresh", String(autoWorldRefresh));
+  }, [autoWorldRefresh]);
+
+  useEffect(() => {
+    localStorage.setItem("aether-auto-read-responses", String(autoReadResponses));
+  }, [autoReadResponses]);
+
+  useEffect(() => {
+    localStorage.setItem("aether-voice-conversation", String(voiceConversation));
+  }, [voiceConversation]);
 
   useEffect(() => {
     const wsUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:4100/ws`;
@@ -864,6 +939,17 @@ export function App() {
     [messages, conversationId]
   );
   const activeConversation = conversations.find((item) => item.id === conversationId);
+
+  useEffect(() => {
+    if (!autoReadResponses && !voiceReplyPending) return;
+    const latest = activeMessages.at(-1);
+    if (!latest || latest.role !== "assistant" || latest.id === lastSpokenMessageId) return;
+    const recent = Date.now() - new Date(latest.createdAt).getTime() < 45_000;
+    if (!voiceReplyPending && !recent) return;
+    speakText(latest.content, language);
+    setLastSpokenMessageId(latest.id);
+    setVoiceReplyPending(false);
+  }, [activeMessages, autoReadResponses, language, lastSpokenMessageId, voiceReplyPending]);
 
   const openTasks = tasks.filter((task) => task.status === "open");
   const pendingActions = actions.filter((action) => action.status === "pending" || action.status === "approved");
@@ -945,7 +1031,7 @@ export function App() {
     setAuthUser(null);
   }
 
-  function startVoiceInput() {
+  function startVoiceInput(sendAfterCapture = false) {
     const SpeechRecognition = (window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
       webkitSpeechRecognition?: SpeechRecognitionCtor;
@@ -959,9 +1045,10 @@ export function App() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = language === "en" ? "en-US" : language === "pt" ? "pt-BR" : language === "fr" ? "fr-FR" : "es-ES";
+    recognition.lang = speechLanguage(language);
     recognition.interimResults = true;
     recognition.continuous = false;
+    let finalText = "";
     setVoiceListening(true);
 
     recognition.onresult = (event) => {
@@ -969,14 +1056,36 @@ export function App() {
         .map((result) => result[0]?.transcript ?? "")
         .join(" ")
         .trim();
-      if (text) setChatInput(text);
+      if (text) {
+        finalText = text;
+        setChatInput(text);
+      }
     };
     recognition.onerror = () => {
       setVoiceListening(false);
       setError("I could not capture your voice. Check microphone permission.");
     };
-    recognition.onend = () => setVoiceListening(false);
+    recognition.onend = () => {
+      setVoiceListening(false);
+      if (sendAfterCapture && finalText.trim()) {
+        setVoiceReplyPending(true);
+        void submitChat(finalText.trim());
+      }
+    };
     recognition.start();
+  }
+
+  async function refreshWorldPulseNow() {
+    setWorldRefreshing(true);
+    try {
+      const data = await api.worldPulse(language);
+      setWorldPulse(data);
+      setLastWorldRefresh(new Date().toISOString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not refresh world data");
+    } finally {
+      setWorldRefreshing(false);
+    }
   }
 
   async function runFacePresenceCheck() {
@@ -1032,6 +1141,7 @@ export function App() {
     try {
       const data = await api.chat(value, provider, retryConversationId);
       setConversationId(data.conversation.id);
+      if (autoReadResponses || voiceConversation) setVoiceReplyPending(true);
       setMessages((current) => [...current, ...data.messages]);
       const refreshed = await api.bootstrap();
       setConversations(refreshed.conversations);
@@ -1769,6 +1879,7 @@ export function App() {
                   <MessageBody content={message.content} sourceLabel={t.sources} />
                   <MessageActions
                     message={message}
+                    language={language}
                     onRetry={() => retryMessage(message)}
                     onEdit={() => editMessage(message)}
                     onFeedback={(rating) => sendMessageFeedback(message, rating)}
@@ -1786,9 +1897,40 @@ export function App() {
                 </article>
               )}
             </div>
+            <div className="voice-controls">
+              <button type="button" onClick={() => {
+                const latestAssistant = activeMessages.filter((message) => message.role === "assistant").at(-1);
+                if (latestAssistant) speakText(latestAssistant.content, language);
+              }} title={t.readAloud}>
+                <Volume2 size={16} />
+                <span>{t.readAloud}</span>
+              </button>
+              <button type="button" onClick={() => window.speechSynthesis?.cancel()} title={t.stopReading}>
+                <VolumeX size={16} />
+                <span>{t.stopReading}</span>
+              </button>
+              <button
+                type="button"
+                className={autoReadResponses ? "active" : ""}
+                onClick={() => setAutoReadResponses((current) => !current)}
+                aria-pressed={autoReadResponses}
+              >
+                <Play size={16} />
+                <span>{t.autoVoice}</span>
+              </button>
+              <button
+                type="button"
+                className={voiceConversation ? "active" : ""}
+                onClick={() => setVoiceConversation((current) => !current)}
+                aria-pressed={voiceConversation}
+              >
+                <Mic size={16} />
+                <span>{t.voiceChat}</span>
+              </button>
+            </div>
             <form className="composer" onSubmit={sendMessage}>
               <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder={t.chatPlaceholder} />
-              <button type="button" className={voiceListening ? "listening" : ""} onClick={startVoiceInput} title="Voice input">
+              <button type="button" className={voiceListening ? "listening" : ""} onClick={() => startVoiceInput(voiceConversation)} title="Voice input">
                 {voiceListening ? <Loader2 className="spin" size={18} /> : <Mic size={18} />}
               </button>
               <button type="submit" disabled={busy} title={t.send}>
@@ -1799,6 +1941,22 @@ export function App() {
 
           <aside className="right-rail">
             <Panel icon={<Globe2 size={17} />} title={t.worldPulse} view="world" activeView={activeView} {...panelProps("world")}>
+              <div className="world-toolbar">
+                <button type="button" onClick={refreshWorldPulseNow} disabled={worldRefreshing} title={t.refreshNow}>
+                  {worldRefreshing ? <Loader2 className="spin" size={15} /> : <RefreshCw size={15} />}
+                  <span>{t.refreshNow}</span>
+                </button>
+                <button
+                  type="button"
+                  className={autoWorldRefresh ? "active" : ""}
+                  onClick={() => setAutoWorldRefresh((current) => !current)}
+                  aria-pressed={autoWorldRefresh}
+                >
+                  <RefreshCw size={15} />
+                  <span>{t.autoUpdate}</span>
+                </button>
+                <small>{t.updated}: {lastWorldRefresh ? new Date(lastWorldRefresh).toLocaleTimeString() : "--"}</small>
+              </div>
               <div className="world-layout">
                 <div className="globe-card">
                   <div
@@ -2440,13 +2598,33 @@ function providerHint(provider: ProviderName, integrations: Record<string, { con
   return integrations[provider]?.env ?? "No conectada";
 }
 
+function speechLanguage(language: Language) {
+  if (language === "en") return "en-US";
+  if (language === "pt") return "pt-BR";
+  if (language === "fr") return "fr-FR";
+  return "es-ES";
+}
+
+function speakText(content: string, language: Language) {
+  if (!("speechSynthesis" in window)) return;
+  const { body } = splitMessageSources(content);
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(body);
+  utterance.lang = speechLanguage(language);
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
 function MessageActions({
   message,
+  language,
   onRetry,
   onEdit,
   onFeedback
 }: {
   message: Message;
+  language: Language;
   onRetry: () => void;
   onEdit: () => void;
   onFeedback: (rating: "up" | "down") => void;
@@ -2458,12 +2636,7 @@ function MessageActions({
   }
 
   function speakMessage() {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message.content);
-    utterance.lang = "es-ES";
-    utterance.rate = 1;
-    window.speechSynthesis.speak(utterance);
+    speakText(message.content, language);
   }
 
   async function rateMessage(rating: "up" | "down") {

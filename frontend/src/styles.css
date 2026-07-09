@@ -1130,6 +1130,60 @@ button {
   font-weight: 700;
 }
 
+.voice-controls,
+.world-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 0;
+  background: var(--surface);
+}
+
+.voice-controls button,
+.world-toolbar button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 850;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.voice-controls button:hover,
+.world-toolbar button:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.voice-controls button.active,
+.world-toolbar button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+}
+
+.world-toolbar {
+  padding: 0 0 10px;
+  border-top: 0;
+  background: transparent;
+}
+
+.world-toolbar small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .composer,
 .inline-form,
 .task-form {
@@ -2836,6 +2890,23 @@ textarea:focus {
     position: sticky;
     bottom: 0;
     z-index: 5;
+  }
+
+  .voice-controls,
+  .world-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .voice-controls button,
+  .world-toolbar button {
+    flex: 0 0 auto;
+  }
+
+  .world-toolbar small {
+    margin-left: 0;
+    white-space: nowrap;
   }
 
   .module-grid {

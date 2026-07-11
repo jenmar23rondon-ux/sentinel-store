@@ -38,7 +38,7 @@ It is not just a chatbot. The goal is to build a private command center with lon
 
 - AI chat with persistent conversation history.
 - Conversation sidebar with create, switch and delete actions.
-- Multi-provider AI selector: `Auto`, `OpenAI`, `Gemini`, `Claude`, `Ollama`, or `Local`.
+- Multi-provider AI selector: `Auto`, `OpenAI`, `Gemini`, `DeepSeek`, `Claude`, `Ollama`, or `Local`.
 - Web search with Serper support and fallback search.
 - Compact source references for web-grounded answers.
 - Personal memory system.
@@ -146,6 +146,9 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-1.5-flash
 GEMINI_VIDEO_MODEL=gemini-1.5-pro
 
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-chat
+
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1
 
@@ -165,6 +168,7 @@ Provider behavior:
 - **Auto:** chooses the best configured provider.
 - **OpenAI:** requires `OPENAI_API_KEY`.
 - **Gemini:** requires `GEMINI_API_KEY`.
+- **DeepSeek:** requires `DEEPSEEK_API_KEY`; useful for low-cost text chat and coding help.
 - **Claude:** requires `ANTHROPIC_API_KEY`.
 - **Ollama:** requires Ollama running locally.
 - **Local:** no external AI cost, but less capable.
@@ -180,10 +184,32 @@ GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-1.5-flash
 GEMINI_VIDEO_MODEL=gemini-1.5-pro
 
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=deepseek-chat
+
 SERPER_API_KEY=...
 ```
 
 Do not commit real API keys to GitHub.
+
+### DeepSeek Setup
+
+1. Open [platform.deepseek.com](https://platform.deepseek.com/).
+2. Create or sign in to your DeepSeek account.
+3. Go to the API keys section and create a new secret key.
+4. Copy the key once. Treat it like a password.
+5. In Railway, open the backend service, then go to **Variables**.
+6. Add:
+
+```env
+DEEPSEEK_API_KEY=your_real_deepseek_key
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+7. Redeploy the backend.
+8. Open Aether and check **Integrations**. DeepSeek should show as ready.
+
+DeepSeek can be very affordable, but it is not guaranteed to be free or unlimited. Check the current pricing, free credits and rate limits in your DeepSeek account before relying on it for production.
 
 ### Connection Checklist
 
@@ -191,6 +217,7 @@ Do not commit real API keys to GitHub.
 | --- | --- | --- | --- |
 | OpenAI | `OPENAI_API_KEY` | Strong chat reasoning and multimodal responses | Integrations panel |
 | Gemini | `GEMINI_API_KEY` | Chat, Vision AI and Video AI | Integrations panel |
+| DeepSeek | `DEEPSEEK_API_KEY` | Low-cost text chat, coding and general questions | Integrations panel |
 | Claude | `ANTHROPIC_API_KEY` | Optional alternate reasoning model | Integrations panel |
 | Serper | `SERPER_API_KEY` | Better web search and current references | Integrations panel |
 | Ollama | `OLLAMA_BASE_URL` | Local models on your own machine | Integrations panel |

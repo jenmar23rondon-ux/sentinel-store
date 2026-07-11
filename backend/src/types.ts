@@ -1,6 +1,6 @@
 export type Role = "user" | "assistant" | "system";
 
-export type ProviderName = "auto" | "openai" | "claude" | "gemini" | "ollama" | "local";
+export type ProviderName = "auto" | "openai" | "claude" | "gemini" | "deepseek" | "ollama" | "local";
 
 export interface Message {
   id: string;

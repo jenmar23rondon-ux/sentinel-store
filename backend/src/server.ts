@@ -89,7 +89,7 @@ app.post("/api/chat", async (req, res, next) => {
     const body = z.object({
       message: z.string().min(1),
       conversationId: z.string().optional(),
-      provider: z.enum(["auto", "openai", "claude", "gemini", "ollama", "local"]).default("auto")
+      provider: z.enum(["auto", "openai", "claude", "gemini", "deepseek", "ollama", "local"]).default("auto")
     }).parse(req.body);
 
     const conversation = await db.upsertConversation(
@@ -296,7 +296,7 @@ app.post("/api/vision/analyze", async (req, res, next) => {
     const body = z.object({
       prompt: z.string().default("Analiza esta imagen."),
       imageData: z.string().min(20),
-      provider: z.enum(["auto", "openai", "claude", "gemini", "ollama", "local"]).default("auto"),
+      provider: z.enum(["auto", "openai", "claude", "gemini", "deepseek", "ollama", "local"]).default("auto"),
       tags: z.array(z.string()).optional()
     }).parse(req.body);
 
@@ -410,7 +410,7 @@ app.post("/api/career/ai", async (req, res, next) => {
   try {
     const body = z.object({
       prompt: z.string().min(2),
-      provider: z.enum(["auto", "openai", "claude", "gemini", "ollama", "local"]).default("auto")
+      provider: z.enum(["auto", "openai", "claude", "gemini", "deepseek", "ollama", "local"]).default("auto")
     }).parse(req.body);
     const store = await db.snapshot();
     const careerContext = store.career.slice(0, 8).map((item) => `${item.company} - ${item.role} (${item.status})`).join("\n");
@@ -551,6 +551,7 @@ function integrationStatus() {
     openai: { configured: hasUsableKey(env.openaiApiKey), label: "OpenAI", env: "OPENAI_API_KEY" },
     claude: { configured: hasUsableKey(env.anthropicApiKey), label: "Claude", env: "ANTHROPIC_API_KEY" },
     gemini: { configured: hasUsableKey(env.geminiApiKey), label: "Gemini", env: "GEMINI_API_KEY" },
+    deepseek: { configured: hasUsableKey(env.deepseekApiKey), label: "DeepSeek", env: "DEEPSEEK_API_KEY", fallback: "Text chat provider" },
     ollama: { configured: Boolean(env.ollamaBaseUrl), label: "Ollama local", env: "OLLAMA_BASE_URL" },
     webSearch: { configured: hasUsableKey(env.serperApiKey), label: "Serper web search", env: "SERPER_API_KEY", fallback: "Wikipedia + DuckDuckGo fallback" },
     github: { configured: false, label: "GitHub OAuth", next: true },
@@ -579,8 +580,8 @@ async function maybeBuildWebContext(message: string) {
 
 function shouldUseWebSearch(message: string) {
   const lower = message.toLowerCase();
-  if (/(crea una grafica|grafica|gráfica|tarea:|pendiente:|recuerda que|recuerda:|envia|enviar|agenda|agendar)/i.test(lower)) return false;
-  if (/(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|dólar|clima|quien|qué es|que es|cómo funciona|como funciona|me puedes decir|dime sobre|explica|mejor|recomienda|beneficios|riesgos|concentracion|concentración|productividad|estudiar|aprender|salud|tecnologia|tecnología|programacion|programación|ciberseguridad|ultimas|últimas|latest|news|today|current|\?)/i.test(message)) return true;
+  if (/(crea una grafica|grafica|grï¿½fica|tarea:|pendiente:|recuerda que|recuerda:|envia|enviar|agenda|agendar)/i.test(lower)) return false;
+  if (/(internet|web|busca|buscar|noticia|noticias|actual|hoy|ahora|precio|valor|bitcoin|oro|dolar|dï¿½lar|clima|quien|quï¿½ es|que es|cï¿½mo funciona|como funciona|me puedes decir|dime sobre|explica|mejor|recomienda|beneficios|riesgos|concentracion|concentraciï¿½n|productividad|estudiar|aprender|salud|tecnologia|tecnologï¿½a|programacion|programaciï¿½n|ciberseguridad|ultimas|ï¿½ltimas|latest|news|today|current|\?)/i.test(message)) return true;
   return lower.trim().split(/\s+/).length >= 4;
 }
 

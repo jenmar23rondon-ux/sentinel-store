@@ -1654,7 +1654,7 @@ export function App() {
             <h2>IA activa</h2>
           </div>
           <div className="provider-grid">
-            {(["auto", "openai", "gemini", "claude", "local"] as ProviderName[]).map((item) => {
+            {(["auto", "openai", "gemini", "deepseek", "claude", "local"] as ProviderName[]).map((item) => {
               const available = item === "auto" || item === "local" || Boolean(integrations[item]?.configured);
               return (
                 <button
@@ -1815,7 +1815,7 @@ export function App() {
                 <ChevronDown size={15} />
               </button>
               <div className="provider-menu">
-                {(["auto", "openai", "gemini", "claude", "ollama", "local"] as ProviderName[]).map((item) => {
+                {(["auto", "openai", "gemini", "deepseek", "claude", "ollama", "local"] as ProviderName[]).map((item) => {
                   const available = providerAvailable(item, integrations);
                   return (
                     <button

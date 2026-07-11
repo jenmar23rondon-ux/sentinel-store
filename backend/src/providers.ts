@@ -23,6 +23,7 @@ export function providerStatus() {
     openai: hasUsableKey(env.openaiApiKey),
     claude: hasUsableKey(env.anthropicApiKey),
     gemini: hasUsableKey(env.geminiApiKey),
+    deepseek: hasUsableKey(env.deepseekApiKey),
     ollama: Boolean(env.ollamaBaseUrl),
     local: true
   };
@@ -41,6 +42,7 @@ export async function generateAssistantReply(input: GenerateInput) {
       if (selected === "openai") return { provider: selected, content: await openai(messages) };
       if (selected === "claude") return { provider: selected, content: await claude(messages) };
       if (selected === "gemini") return { provider: selected, content: await gemini(messages) };
+      if (selected === "deepseek") return { provider: selected, content: await deepseek(messages) };
       if (selected === "ollama") return { provider: selected, content: await ollama(messages) };
     } catch (error) {
       failures.push(friendlyProviderFailure(selected, error));
@@ -86,6 +88,7 @@ function resolveProviderOrder(provider: ProviderName): ProviderName[] {
   if (hasUsableKey(env.openaiApiKey)) configured.push("openai");
   if (hasUsableKey(env.anthropicApiKey)) configured.push("claude");
   if (hasUsableKey(env.geminiApiKey)) configured.push("gemini");
+  if (hasUsableKey(env.deepseekApiKey)) configured.push("deepseek");
   if (env.ollamaBaseUrl) configured.push("ollama");
 
   if (provider === "auto") return configured;
@@ -187,6 +190,26 @@ async function gemini(messages: { role: string; content: string }[]) {
   if (!response.ok) throw new Error(await response.text());
   const data = await response.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
   return data.candidates?.[0]?.content?.parts?.map((item) => item.text ?? "").join("") || "No recibi respuesta de Gemini.";
+}
+
+async function deepseek(messages: { role: string; content: string }[]) {
+  if (!hasUsableKey(env.deepseekApiKey)) throw new Error("DEEPSEEK_API_KEY no esta configurada");
+  const apiKey = env.deepseekApiKey;
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: env.deepseekModel,
+      messages,
+      temperature: 0.4
+    })
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const data = await response.json() as { choices?: { message?: { content?: string } }[] };
+  return data.choices?.[0]?.message?.content ?? "No recibi respuesta de DeepSeek.";
 }
 
 async function ollama(messages: { role: string; content: string }[]) {

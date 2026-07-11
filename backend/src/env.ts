@@ -13,6 +13,8 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY,
   geminiModel: process.env.GEMINI_MODEL ?? "gemini-1.5-flash",
   geminiVideoModel: process.env.GEMINI_VIDEO_MODEL ?? "gemini-1.5-pro",
+  deepseekApiKey: process.env.DEEPSEEK_API_KEY,
+  deepseekModel: process.env.DEEPSEEK_MODEL ?? "deepseek-chat",
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
   ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.1",
   serperApiKey: process.env.SERPER_API_KEY,

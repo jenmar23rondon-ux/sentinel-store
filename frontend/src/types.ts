@@ -1,4 +1,4 @@
-export type ProviderName = "auto" | "openai" | "claude" | "gemini" | "ollama" | "local";
+export type ProviderName = "auto" | "openai" | "claude" | "gemini" | "deepseek" | "ollama" | "local";
 
 export interface Conversation {
   id: string;

@@ -719,6 +719,8 @@ export function App() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [visionPrompt, setVisionPrompt] = useState(translations.es.visionPrompt);
   const [visionImage, setVisionImage] = useState<string>("");
+  const [visionCameraOpen, setVisionCameraOpen] = useState(false);
+  const [visionCameraStatus, setVisionCameraStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [voiceListening, setVoiceListening] = useState(false);
@@ -734,6 +736,8 @@ export function App() {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioSendAfterRef = useRef(false);
   const audioStopTimerRef = useRef<number | null>(null);
+  const visionVideoRef = useRef<HTMLVideoElement | null>(null);
+  const visionCameraStreamRef = useRef<MediaStream | null>(null);
 
   const t = translations[language];
 
@@ -768,6 +772,12 @@ export function App() {
     if (expandedPanel) localStorage.setItem("aether-expanded-panel", expandedPanel);
     else localStorage.removeItem("aether-expanded-panel");
   }, [expandedPanel]);
+
+  useEffect(() => {
+    return () => {
+      visionCameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("aether-sidebar-compact", String(sidebarCompact));
@@ -1495,22 +1505,26 @@ export function App() {
     }
   }
 
-  async function analyzeVision(event: FormEvent) {
-    event.preventDefault();
-    if (!visionImage) {
+  async function analyzeVisionImage(imageData = visionImage, prompt = visionPrompt) {
+    if (!imageData) {
       setError(t.selectImage);
       return;
     }
     setBusy(true);
     setError("");
     try {
-      const item = await api.analyzeVision(visionPrompt, visionImage, provider);
+      const item = await api.analyzeVision(prompt, imageData, provider);
       setVision((current) => [item, ...current]);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.noVision);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function analyzeVision(event: FormEvent) {
+    event.preventDefault();
+    await analyzeVisionImage();
   }
 
   async function removeVision(id: string) {
@@ -1523,6 +1537,67 @@ export function App() {
     const reader = new FileReader();
     reader.onload = () => setVisionImage(String(reader.result));
     reader.readAsDataURL(file);
+  }
+
+  async function openVisionCamera() {
+    try {
+      setError("");
+      setVisionCameraStatus("Opening camera...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+      visionCameraStreamRef.current = stream;
+      setVisionCameraOpen(true);
+      setVisionCameraStatus("Camera ready. Capture what you want Aether to analyze.");
+      window.setTimeout(() => {
+        if (visionVideoRef.current) {
+          visionVideoRef.current.srcObject = stream;
+          void visionVideoRef.current.play();
+        }
+      }, 0);
+    } catch (err) {
+      setVisionCameraStatus("");
+      setError(err instanceof Error ? err.message : "Camera permission was blocked or no camera was found.");
+    }
+  }
+
+  function closeVisionCamera() {
+    visionCameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    visionCameraStreamRef.current = null;
+    if (visionVideoRef.current) visionVideoRef.current.srcObject = null;
+    setVisionCameraOpen(false);
+    setVisionCameraStatus("");
+  }
+
+  function captureVisionFrame() {
+    const video = visionVideoRef.current;
+    if (!video) {
+      setError("Camera is not ready yet.");
+      return "";
+    }
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setError("Aether could not capture this camera frame.");
+      return "";
+    }
+    context.drawImage(video, 0, 0, width, height);
+    const imageData = canvas.toDataURL("image/jpeg", 0.9);
+    setVisionImage(imageData);
+    setVisionCameraStatus("Frame captured. You can edit the question or analyze it now.");
+    return imageData;
+  }
+
+  async function captureAndAnalyzeVisionCamera() {
+    const imageData = captureVisionFrame();
+    if (!imageData) return;
+    closeVisionCamera();
+    await analyzeVisionImage(imageData, visionPrompt || t.visionPrompt);
   }
 
   function handleChatImageFile(file?: File) {
@@ -2540,6 +2615,30 @@ export function App() {
 
             <Panel icon={<ImagePlus size={17} />} title={t.visionAI} view="vision" activeView={activeView} {...panelProps("vision")}>
               <form className="vision-form" onSubmit={analyzeVision}>
+                <div className="camera-card">
+                  {visionCameraOpen ? (
+                    <>
+                      <video ref={visionVideoRef} className="camera-preview" playsInline muted />
+                      <div className="camera-actions">
+                        <button type="button" onClick={captureVisionFrame}>
+                          <Camera size={16} />
+                          Capture
+                        </button>
+                        <button type="button" className="primary" onClick={captureAndAnalyzeVisionCamera} disabled={busy}>
+                          {busy ? <Loader2 className="spin" size={16} /> : <Search size={16} />}
+                          Capture + analyze
+                        </button>
+                        <button type="button" onClick={closeVisionCamera}>Close</button>
+                      </div>
+                    </>
+                  ) : (
+                    <button type="button" className="camera-open" onClick={openVisionCamera}>
+                      <Camera size={18} />
+                      Open camera
+                    </button>
+                  )}
+                  {visionCameraStatus && <small className="camera-status">{visionCameraStatus}</small>}
+                </div>
                 <label className="file-picker">
                   <ImagePlus size={18} />
                   <span>{visionImage ? t.imageReady : t.uploadCapture}</span>

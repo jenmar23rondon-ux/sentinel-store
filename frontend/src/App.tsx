@@ -643,9 +643,11 @@ export function App() {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem("aether-auth-token") || "");
   const [authOpen, setAuthOpen] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
   const [authCode, setAuthCode] = useState("");
-  const [authStep, setAuthStep] = useState<"email" | "code">("email");
+  const [authStep, setAuthStep] = useState<"password" | "email" | "code">("password");
   const [authDevCode, setAuthDevCode] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
   const [faceCheckStatus, setFaceCheckStatus] = useState("Not checked");
   const [memory, setMemory] = useState<MemoryItem[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -822,6 +824,7 @@ export function App() {
   useEffect(() => {
     if (!authToken) {
       setAuthUser(null);
+      setAuthChecked(true);
       return;
     }
     api.me(authToken)
@@ -831,11 +834,13 @@ export function App() {
           localStorage.removeItem("aether-auth-token");
           setAuthToken("");
         }
+        setAuthChecked(true);
       })
       .catch(() => {
         localStorage.removeItem("aether-auth-token");
         setAuthToken("");
         setAuthUser(null);
+        setAuthChecked(true);
       });
   }, [authToken]);
 
@@ -858,6 +863,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (!authUser) return;
     api.bootstrap()
       .then((data) => {
         setMessages(data.messages);
@@ -882,9 +888,10 @@ export function App() {
         setMessages(offline.messages);
         setError(err.message);
       });
-  }, []);
+  }, [authUser]);
 
   useEffect(() => {
+    if (!authUser) return;
     let mounted = true;
     const refresh = async () => {
       setWorldRefreshing(true);
@@ -912,7 +919,7 @@ export function App() {
       mounted = false;
       window.clearInterval(interval);
     };
-  }, [language, autoWorldRefresh]);
+  }, [language, autoWorldRefresh, authUser]);
 
   useEffect(() => {
     localStorage.setItem("aether-auto-world-refresh", String(autoWorldRefresh));
@@ -995,6 +1002,25 @@ export function App() {
   function editMessage(message: Message) {
     setChatInput(message.content);
     setActiveView("chat");
+  }
+
+  async function loginWithPassword(event: FormEvent) {
+    event.preventDefault();
+    if (!authEmail.trim() || !authPassword) return;
+    setAuthBusy(true);
+    setError("");
+    try {
+      const result = await api.loginWithPassword(authEmail.trim(), authPassword);
+      localStorage.setItem("aether-auth-token", result.token);
+      setAuthToken(result.token);
+      setAuthUser(result.user);
+      setAuthOpen(false);
+      setAuthPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid email or password");
+    } finally {
+      setAuthBusy(false);
+    }
   }
 
   async function requestAuthCode(event: FormEvent) {
@@ -1674,6 +1700,97 @@ export function App() {
     setInstallPrompt(null);
   }
 
+  if (!authChecked) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <div className="auth-loading">
+            <Loader2 className="spin" size={22} />
+            <strong>Loading Aether...</strong>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card login-card">
+          <div className="auth-brand">
+            <div className="brand-mark" aria-label="Aether logo">
+              <span className="brand-letter">A</span>
+              <span className="brand-orbit orbit-one" />
+              <span className="brand-orbit orbit-two" />
+            </div>
+            <div>
+              <h1>Aether</h1>
+              <p>Personal second brain</p>
+            </div>
+          </div>
+
+          <div className="auth-head">
+            <div>
+              <strong>Sign in required</strong>
+              <span>Enter with your Aether account to access the dashboard, memory, chat and modules.</span>
+            </div>
+          </div>
+
+          {error && <div className="error-banner compact">{error}</div>}
+
+          {authStep === "password" && (
+            <form className="auth-form" onSubmit={loginWithPassword}>
+              <label>
+                Email
+                <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="angel@aether.local" autoComplete="username" />
+              </label>
+              <label>
+                Password
+                <input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="Aether2026!" autoComplete="current-password" />
+              </label>
+              <button className="wide-button text-button" disabled={authBusy}>
+                {authBusy ? <Loader2 className="spin" size={16} /> : <KeyRound size={16} />}
+                Sign in
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setAuthStep("email")}>Use email code instead</button>
+            </form>
+          )}
+
+          {authStep === "email" && (
+            <form className="auth-form" onSubmit={requestAuthCode}>
+              <label>
+                Email
+                <input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@gmail.com" />
+              </label>
+              <button className="wide-button text-button" disabled={authBusy}>
+                {authBusy ? <Loader2 className="spin" size={16} /> : <Mail size={16} />}
+                Send verification code
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setAuthStep("password")}>Use password instead</button>
+            </form>
+          )}
+
+          {authStep === "code" && (
+            <form className="auth-form" onSubmit={verifyAuthCode}>
+              <label>
+                Verification code
+                <input inputMode="numeric" value={authCode} onChange={(event) => setAuthCode(event.target.value)} placeholder="123456" />
+              </label>
+              {authDevCode && <p className="dev-code">Dev code: <strong>{authDevCode}</strong></p>}
+              <button className="wide-button text-button" disabled={authBusy}>
+                {authBusy ? <Loader2 className="spin" size={16} /> : <CheckCircle2 size={16} />}
+                Verify and continue
+              </button>
+              <button type="button" className="ghost-button" onClick={() => setAuthStep("email")}>Use another email</button>
+            </form>
+          )}
+
+          <p className="auth-note">Default local account: angel@aether.local / Aether2026!. Change it in Railway variables before sharing the app.</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className={`app-shell ${sidebarCompact ? "compact-sidebar" : ""} ${sidebarHidden ? "sidebar-hidden" : ""}`}>
       <aside
@@ -1916,9 +2033,9 @@ export function App() {
             <p>{activeView === "chat" ? "Aether responde con tus IAs, memoria y busqueda web." : t.commandCopy}</p>
           </div>
           <div className="control-cluster">
-            <button className="account-button" onClick={() => setAuthOpen(true)} title={authUser ? "Open profile" : "Sign in"}>
+            <button className="account-button" onClick={() => setAuthOpen(true)} title="Open profile">
               <UserCircle size={17} />
-              <span>{authUser ? authUser.name ?? authUser.email : "Free mode"}</span>
+              <span>{authUser.name ?? authUser.email}</span>
             </button>
             {!isStandalone && (
               <button className="install-button" onClick={installApp} title={t.installApp}>

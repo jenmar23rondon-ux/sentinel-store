@@ -157,6 +157,9 @@ SERPER_API_KEY=
 GMAIL_USER=
 GMAIL_APP_PASSWORD=
 APP_BASE_URL=http://localhost:5173
+
+AETHER_ADMIN_EMAIL=angel@aether.local
+AETHER_ADMIN_PASSWORD=Aether2026!
 ```
 
 ## Connecting AI Providers
@@ -231,9 +234,29 @@ GET /api/integrations
 GET /api/auth/me
 ```
 
-## Email Login
+## Required Login
 
-Aether includes a free guest mode and an email-code login foundation.
+Aether requires a session before the dashboard loads. The backend also protects `/api/*` routes with the session token.
+
+Default local credentials:
+
+```text
+Email: angel@aether.local
+Password: Aether2026!
+```
+
+For Railway or any public deployment, change these values in the backend service variables:
+
+```env
+AETHER_ADMIN_EMAIL=your_email@example.com
+AETHER_ADMIN_PASSWORD=use_a_long_private_password
+```
+
+Do not commit real passwords to GitHub. Store them only in Railway variables.
+
+### Email Code Login
+
+Aether also includes an email-code login foundation.
 
 For local testing, if Gmail is not configured, the backend returns a dev code and logs it in the console. For real email delivery through Gmail, create a Google App Password and set:
 

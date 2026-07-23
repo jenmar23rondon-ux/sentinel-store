@@ -20,5 +20,7 @@ export const env = {
   serperApiKey: process.env.SERPER_API_KEY,
   gmailUser: process.env.GMAIL_USER,
   gmailAppPassword: process.env.GMAIL_APP_PASSWORD,
-  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173"
+  appBaseUrl: process.env.APP_BASE_URL ?? "http://localhost:5173",
+  adminEmail: process.env.AETHER_ADMIN_EMAIL ?? "angel@aether.local",
+  adminPassword: process.env.AETHER_ADMIN_PASSWORD ?? "Aether2026!"
 };

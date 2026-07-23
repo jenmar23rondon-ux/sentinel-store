@@ -23,7 +23,7 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, name: "Aether", time: new Date().toISOString() });
 });
 
-app.get("/api/bootstrap", async (_req, res) => {
+app.get("/api/bootstrap", requireAuth, async (_req, res) => {
   const store = await db.snapshot();
   res.json({
     conversations: store.conversations,
@@ -71,6 +71,25 @@ app.post("/api/auth/verify-code", async (req, res, next) => {
   }
 });
 
+app.post("/api/auth/password", async (req, res, next) => {
+  try {
+    const body = z.object({
+      email: z.string().email(),
+      password: z.string().min(1)
+    }).parse(req.body);
+    const emailMatches = body.email.toLowerCase() === env.adminEmail.toLowerCase();
+    const passwordMatches = body.password === env.adminPassword;
+    if (!emailMatches || !passwordMatches) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+    const user = await db.upsertUser(body.email);
+    const session = await db.createSession(user.id);
+    res.json({ token: session.token, user });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/auth/me", async (req, res) => {
   const token = readBearerToken(req);
   if (!token) return res.json({ user: null });
@@ -83,6 +102,8 @@ app.post("/api/auth/logout", async (req, res) => {
   if (token) await db.deleteSession(token);
   res.status(204).send();
 });
+
+app.use("/api", requireAuth);
 
 app.post("/api/chat", async (req, res, next) => {
   try {
@@ -581,6 +602,14 @@ function readBearerToken(req: express.Request) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return "";
   return header.slice("Bearer ".length).trim();
+}
+
+async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const token = readBearerToken(req);
+  if (!token) return res.status(401).json({ error: "Login required" });
+  const auth = await db.findSession(token);
+  if (!auth) return res.status(401).json({ error: "Invalid or expired session" });
+  next();
 }
 
 async function sendVerificationEmail(email: string, code: string) {

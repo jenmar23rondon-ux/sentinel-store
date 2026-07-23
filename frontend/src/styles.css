@@ -980,6 +980,18 @@ button {
   backdrop-filter: blur(5px);
 }
 
+.auth-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 32%),
+    radial-gradient(circle at 78% 76%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 30%),
+    var(--bg);
+  color: var(--text);
+}
+
 .auth-card {
   width: min(100%, 470px);
   display: grid;
@@ -990,6 +1002,37 @@ button {
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
+}
+
+.login-card {
+  width: min(100%, 430px);
+}
+
+.auth-brand,
+.auth-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-brand h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.auth-brand p,
+.auth-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auth-note {
+  line-height: 1.45;
+}
+
+.error-banner.compact {
+  margin: 0;
 }
 
 .auth-head {

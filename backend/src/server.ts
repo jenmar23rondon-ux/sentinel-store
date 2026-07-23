@@ -277,6 +277,7 @@ app.post("/api/search", async (req, res, next) => {
 
 app.get("/api/world-pulse", async (req, res) => {
   const lang = z.enum(["es", "en", "pt", "fr"]).catch("es").parse(req.query.lang);
+  res.setHeader("Cache-Control", "no-store, max-age=0");
   const [news, currencies, gold] = await Promise.all([
     fetchWorldNews(lang).catch(() => fallbackNews()),
     fetchCurrencies().catch(() => fallbackCurrencies()),
@@ -701,9 +702,14 @@ async function fetchWorldNews(lang: "es" | "en" | "pt" | "fr") {
   for (const feed of feeds) {
     const q = encodeURIComponent(`${feed.query} when:1d`);
     const url = `https://news.google.com/rss/search?q=${q}&hl=${feedLocale.hl}&gl=${feed.gl}&ceid=${feed.gl}:${feedLocale.ceidLang}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: "no-store" });
     const xml = await response.text();
-    const allItems = extractRssItems(xml);
+    let allItems = extractRssItems(xml);
+    if (allItems.length === 0) {
+      const topUrl = `https://news.google.com/rss?hl=${feedLocale.hl}&gl=${feed.gl}&ceid=${feed.gl}:${feedLocale.ceidLang}`;
+      const topResponse = await fetch(topUrl, { cache: "no-store" });
+      allItems = extractRssItems(await topResponse.text());
+    }
     const selected = allItems.find((item) => !usedTitles.has(normalizeNewsTitle(item.title))) ?? allItems[0] ?? { title: "Latest headlines", link: url };
     usedTitles.add(normalizeNewsTitle(selected.title));
     results.push({ ...feed, url, title: selected.title, link: selected.link, impact: inferNewsImpact(selected.title) });

@@ -167,7 +167,7 @@ export const api = {
       body: JSON.stringify({ messageId, rating, note })
     }),
 
-  worldPulse: (lang = "es") => request<WorldPulse>(`/api/world-pulse?lang=${encodeURIComponent(lang)}`),
+  worldPulse: (lang = "es") => request<WorldPulse>(`/api/world-pulse?lang=${encodeURIComponent(lang)}&t=${Date.now()}`),
 
   analyzeVideo: (input: { question: string; youtubeUrl?: string; videoData?: string; mimeType?: string }) =>
     request<{ provider: string; content: string }>("/api/video/analyze", {

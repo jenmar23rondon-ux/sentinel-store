@@ -62,8 +62,7 @@ import { registerSW } from "virtual:pwa-register";
 import { api } from "./services/api";
 import { cacheBootstrap, loadOfflineSnapshot, syncWhenOnline } from "./services/sync";
 import { offlineDb, queueSync } from "./services/offlineDb";
-import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, UserProfile, VisionItem } from "./types";
-import type { WorldPulse } from "./types";
+import type { ActionItem, ActionStatus, ActionType, ActivityEvent, ChartKind, Conversation, CustomChart, JobApplication, JobStatus, MemoryItem, Message, NotificationSettings, ProviderName, SearchResult, TaskItem, UserProfile, VisionItem, WorldNewsItem, WorldPulse } from "./types";
 
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
@@ -705,6 +704,7 @@ export function App() {
   const [worldRefreshing, setWorldRefreshing] = useState(false);
   const [autoWorldRefresh, setAutoWorldRefresh] = useState(() => localStorage.getItem("aether-auto-world-refresh") !== "false");
   const [lastWorldRefresh, setLastWorldRefresh] = useState("");
+  const [selectedWorldNews, setSelectedWorldNews] = useState<WorldNewsItem | null>(null);
   const [chartPrompt, setChartPrompt] = useState("Crea una grafica de horas de estudio: lunes 2, martes 3, miercoles 1.5, jueves 4");
   const [chartKind, setChartKind] = useState<ChartKind>("bar");
   const [videoQuestion, setVideoQuestion] = useState("Resume este video y dime las ideas importantes.");
@@ -924,6 +924,17 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("aether-auto-world-refresh", String(autoWorldRefresh));
   }, [autoWorldRefresh]);
+
+  useEffect(() => {
+    if (!worldPulse?.news.length) {
+      setSelectedWorldNews(null);
+      return;
+    }
+    setSelectedWorldNews((current) => {
+      if (current && worldPulse.news.some((item) => item.link === current.link)) return current;
+      return worldPulse.news[0];
+    });
+  }, [worldPulse]);
 
   useEffect(() => {
     localStorage.setItem("aether-auto-read-responses", String(autoReadResponses));
@@ -2248,31 +2259,55 @@ export function App() {
                     onTouchEnd={() => setGlobeDragStart(null)}
                   >
                     {worldPulse?.news.map((item, index) => (
-                      <span
-                        className={`map-pin impact-${item.impact}`}
+                      <button
+                        type="button"
+                        className={`map-pin impact-${item.impact} ${selectedWorldNews?.link === item.link ? "selected" : ""}`}
                         style={{ left: `${((item.lng + 180) / 360) * 100}%`, top: `${((90 - item.lat) / 180) * 100}%` }}
                         key={`${item.country}-${index}`}
                         title={`${item.country} - ${item.city}: ${item.title}`}
+                        onClick={() => setSelectedWorldNews(item)}
                       >
                         <span className="map-pin-label">
                           <strong>{item.country}</strong>
                           <small>{item.city} · {item.impact}</small>
                         </span>
-                      </span>
+                      </button>
                     ))}
                   </div>
                   <small>{worldPulse ? new Date(worldPulse.updatedAt).toLocaleString() : "Loading world pulse..."}</small>
                 </div>
                 <div className="news-list">
                   {worldPulse?.news.map((item) => (
-                    <a href={item.link} target="_blank" rel="noreferrer" className="news-card" key={`${item.country}-${item.title}`}>
+                    <article
+                      className={`news-card ${selectedWorldNews?.link === item.link ? "selected" : ""}`}
+                      key={`${item.country}-${item.title}`}
+                      onClick={() => setSelectedWorldNews(item)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") setSelectedWorldNews(item);
+                      }}
+                    >
                       <strong>{item.country} · {item.city}</strong>
                       <span>{item.title}</span>
                       <em>{item.impact}</em>
-                    </a>
+                    </article>
                   ))}
                 </div>
               </div>
+              {selectedWorldNews && (
+                <article className="world-detail">
+                  <div>
+                    <span>{selectedWorldNews.country} - {selectedWorldNews.city}</span>
+                    <strong>{selectedWorldNews.title}</strong>
+                    <em>{selectedWorldNews.impact} impact</em>
+                  </div>
+                  <a href={selectedWorldNews.link} target="_blank" rel="noreferrer">
+                    <Globe2 size={15} />
+                    Open source
+                  </a>
+                </article>
+              )}
               <div className="market-grid">
                 <section>
                   <h3>{t.currencies}</h3>

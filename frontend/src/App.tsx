@@ -68,17 +68,6 @@ import type { WorldPulse } from "./types";
 type Language = "es" | "en" | "pt" | "fr";
 type Theme = "light" | "dark";
 type ViewKey = "chat" | "world" | "analytics" | "video" | "notebook" | "actions" | "career" | "activity" | "tasks" | "memory" | "vision" | "search" | "modules";
-type SpeechRecognitionLike = {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  onresult: ((event: { results: ArrayLike<{ 0?: { transcript?: string } }> }) => void) | null;
-  onerror: ((event: { error?: string; message?: string }) => void) | null;
-  onend: (() => void) | null;
-  stop: () => void;
-  start: () => void;
-};
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
 const defaultPanelOrder: ViewKey[] = ["notebook", "world", "analytics", "video", "actions", "career", "activity", "memory", "tasks", "search", "vision", "modules"];
 
@@ -744,6 +733,7 @@ export function App() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioSendAfterRef = useRef(false);
+  const audioStopTimerRef = useRef<number | null>(null);
 
   const t = translations[language];
 
@@ -1072,75 +1062,7 @@ export function App() {
       stopAudioRecording();
       return;
     }
-
-    const SpeechRecognition = (window as unknown as {
-      SpeechRecognition?: SpeechRecognitionCtor;
-      webkitSpeechRecognition?: SpeechRecognitionCtor;
-    }).SpeechRecognition ?? (window as unknown as {
-      webkitSpeechRecognition?: SpeechRecognitionCtor;
-    }).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      await startAudioRecording(sendAfterCapture);
-      return;
-    }
-
-    if (!window.isSecureContext && location.hostname !== "localhost") {
-      setError("Microphone needs HTTPS. Open the deployed Railway/Vercel URL or localhost.");
-      return;
-    }
-
-    setError("");
-    setVoiceStatus("Listening...");
-    const recognition = new SpeechRecognition();
-    recognition.lang = speechLanguage(language);
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    let finalText = "";
-    let recognitionFailed = false;
-    setVoiceListening(true);
-
-    recognition.onresult = (event) => {
-      const text = Array.from(event.results)
-        .map((result) => result[0]?.transcript ?? "")
-        .join(" ")
-        .trim();
-      if (text) {
-        finalText = text;
-        setChatInput(text);
-      }
-    };
-    recognition.onerror = (event) => {
-      recognitionFailed = true;
-      setVoiceListening(false);
-      setVoiceStatus("");
-      const reason = event.error ?? "";
-      if (/not-allowed|service-not-allowed|permission/i.test(reason)) {
-        setError("Microphone permission is blocked. Enable microphone access for this site in Chrome/Android settings.");
-        return;
-      }
-      if (/audio-capture/i.test(reason)) {
-        setError("I cannot find an available microphone. Check that no other app is using it.");
-        return;
-      }
-      void startAudioRecording(sendAfterCapture);
-    };
-    recognition.onend = () => {
-      if (recognitionFailed) return;
-      setVoiceListening(false);
-      setVoiceStatus(finalText.trim() ? "Voice captured" : "");
-      if (sendAfterCapture && finalText.trim()) {
-        setVoiceReplyPending(true);
-        void submitChat(finalText.trim());
-      }
-    };
-    try {
-      recognition.start();
-    } catch {
-      setVoiceListening(false);
-      setVoiceStatus("");
-      setError("I could not start the microphone. Close other recording apps and try again.");
-    }
+    await startAudioRecording(sendAfterCapture);
   }
 
   async function startAudioRecording(sendAfterCapture = false) {
@@ -1174,6 +1096,7 @@ export function App() {
         void transcribeRecordedAudio(recorder.mimeType || "audio/webm");
       };
       recorder.start();
+      audioStopTimerRef.current = window.setTimeout(() => stopAudioRecording(), 8000);
       setAudioRecording(true);
       setVoiceListening(false);
     } catch (err) {
@@ -1187,6 +1110,10 @@ export function App() {
   }
 
   function stopAudioRecording() {
+    if (audioStopTimerRef.current) {
+      window.clearTimeout(audioStopTimerRef.current);
+      audioStopTimerRef.current = null;
+    }
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
     setVoiceStatus("Transcribing audio...");

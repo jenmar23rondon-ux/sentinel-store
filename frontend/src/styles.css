@@ -100,7 +100,7 @@ button {
 }
 
 .app-shell.compact-sidebar {
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 .app-shell.sidebar-hidden {
@@ -125,7 +125,10 @@ button {
 }
 
 .sidebar.compact {
-  width: 92px;
+  width: 76px;
+  padding: 14px 10px;
+  gap: 14px;
+  align-items: center;
 }
 
 .sidebar.hidden {
@@ -156,6 +159,52 @@ button {
 .sidebar.compact .nav-list button,
 .sidebar.compact .nav-tools {
   justify-content: center;
+}
+
+.sidebar.compact .brand {
+  width: 100%;
+}
+
+.sidebar.compact .brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.sidebar.compact .brand-letter {
+  font-size: 25px;
+}
+
+.sidebar.compact .brand-orbit {
+  inset: 8px;
+}
+
+.sidebar.compact .brand-mark::after {
+  width: 6px;
+  height: 6px;
+  transform: translate(14px, -12px);
+}
+
+.sidebar.compact .sidebar-close {
+  display: none;
+}
+
+.sidebar.compact .nav-tools,
+.sidebar.compact .nav-list {
+  width: 100%;
+}
+
+.sidebar.compact .nav-tools {
+  grid-template-columns: 1fr;
+}
+
+.sidebar.compact .nav-tools button,
+.sidebar.compact .nav-list button {
+  width: 46px;
+  min-width: 46px;
+  min-height: 42px;
+  padding: 0;
+  margin: 0 auto;
 }
 
 .brand {

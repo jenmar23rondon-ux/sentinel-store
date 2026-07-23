@@ -684,6 +684,8 @@ export function App() {
   const [updateReady, setUpdateReady] = useState(false);
   const [applyUpdate, setApplyUpdate] = useState<(() => Promise<void>) | null>(null);
   const [chatInput, setChatInput] = useState("");
+  const [chatImage, setChatImage] = useState("");
+  const [chatImageName, setChatImageName] = useState("");
   const [memoryInput, setMemoryInput] = useState("");
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState<TaskItem["priority"]>("medium");
@@ -732,6 +734,7 @@ export function App() {
   const [voiceConversation, setVoiceConversation] = useState(() => localStorage.getItem("aether-voice-conversation") === "true");
   const [voiceReplyPending, setVoiceReplyPending] = useState(false);
   const [lastSpokenMessageId, setLastSpokenMessageId] = useState("");
+  const [voiceStatus, setVoiceStatus] = useState("");
   const [error, setError] = useState("");
 
   const t = translations[language];
@@ -978,8 +981,9 @@ export function App() {
 
   async function sendMessage(event: FormEvent) {
     event.preventDefault();
-    if (!chatInput.trim()) return;
-    await submitChat(chatInput.trim());
+    if (!chatInput.trim() && !chatImage) return;
+    const value = chatInput.trim() || "Describe esta imagen y dime que esta pasando.";
+    await submitChat(value);
   }
 
   function editMessage(message: Message) {
@@ -1044,6 +1048,8 @@ export function App() {
       return;
     }
 
+    setError("");
+    setVoiceStatus("Listening...");
     const recognition = new SpeechRecognition();
     recognition.lang = speechLanguage(language);
     recognition.interimResults = true;
@@ -1063,16 +1069,24 @@ export function App() {
     };
     recognition.onerror = () => {
       setVoiceListening(false);
+      setVoiceStatus("");
       setError("I could not capture your voice. Check microphone permission.");
     };
     recognition.onend = () => {
       setVoiceListening(false);
+      setVoiceStatus(finalText.trim() ? "Voice captured" : "");
       if (sendAfterCapture && finalText.trim()) {
         setVoiceReplyPending(true);
         void submitChat(finalText.trim());
       }
     };
-    recognition.start();
+    try {
+      recognition.start();
+    } catch {
+      setVoiceListening(false);
+      setVoiceStatus("");
+      setError("I could not start the microphone. Close other recording apps and try again.");
+    }
   }
 
   async function refreshWorldPulseNow() {
@@ -1135,11 +1149,14 @@ export function App() {
   }
 
   async function submitChat(value: string, retryConversationId = conversationId) {
+    const attachedImage = chatImage;
     setChatInput("");
+    setChatImage("");
+    setChatImageName("");
     setBusy(true);
     setError("");
     try {
-      const data = await api.chat(value, provider, retryConversationId);
+      const data = await api.chat(value, provider, retryConversationId, attachedImage || undefined);
       setConversationId(data.conversation.id);
       if (autoReadResponses || voiceConversation) setVoiceReplyPending(true);
       setMessages((current) => [...current, ...data.messages]);
@@ -1440,6 +1457,21 @@ export function App() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => setVisionImage(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  function handleChatImageFile(file?: File) {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+      setError("Use PNG, JPG or WEBP images.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setChatImage(String(reader.result));
+      setChatImageName(file.name);
+      setError("");
+    };
     reader.readAsDataURL(file);
   }
 
@@ -1929,13 +1961,27 @@ export function App() {
               </button>
             </div>
             <form className="composer" onSubmit={sendMessage}>
-              <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder={t.chatPlaceholder} />
+              {chatImage && (
+                <div className="chat-attachment-preview">
+                  <img src={chatImage} alt="Attached preview" />
+                  <span>{chatImageName || "Attached image"}</span>
+                  <button type="button" onClick={() => { setChatImage(""); setChatImageName(""); }} title="Remove image">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} placeholder={chatImage ? "Pregunta algo sobre la imagen..." : t.chatPlaceholder} />
+              <label className="composer-file-button" title="Attach image">
+                <ImagePlus size={18} />
+                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => handleChatImageFile(event.target.files?.[0])} />
+              </label>
               <button type="button" className={voiceListening ? "listening" : ""} onClick={() => startVoiceInput(voiceConversation)} title="Voice input">
                 {voiceListening ? <Loader2 className="spin" size={18} /> : <Mic size={18} />}
               </button>
               <button type="submit" disabled={busy} title={t.send}>
                 {busy ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
               </button>
+              {voiceStatus && <small className="voice-status">{voiceStatus}</small>}
             </form>
           </section>
 

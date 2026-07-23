@@ -58,24 +58,27 @@ export async function generateAssistantReply(input: GenerateInput) {
 }
 
 export async function analyzeImage(input: VisionInput) {
-  const selected = resolveProvider(input.provider);
+  const providerOrder = resolveVisionProviderOrder(input.provider);
+  const failures: string[] = [];
 
-  try {
-    if (selected === "openai") return { provider: selected, content: await openaiVision(input) };
-    if (selected === "claude") return { provider: selected, content: await claudeVision(input) };
-    if (selected === "gemini") return { provider: selected, content: await geminiVision(input) };
-    if (selected === "ollama") return { provider: selected, content: await ollamaVision(input) };
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "error desconocido";
-    return {
-      provider: "local",
-      content: `${localVisionReply(input.prompt, input.mimeType)}\n\nNota: intente analizar la imagen con ${selected}, pero fallo: ${detail}`
-    };
+  for (const selected of providerOrder) {
+    try {
+      if (selected === "openai") return { provider: selected, content: await openaiVision(input) };
+      if (selected === "claude") return { provider: selected, content: await claudeVision(input) };
+      if (selected === "gemini") return { provider: selected, content: await geminiVision(input) };
+      if (selected === "ollama") return { provider: selected, content: await ollamaVision(input) };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "error desconocido";
+      failures.push(`${selected}: ${detail}`);
+    }
   }
 
+  const note = input.provider === "deepseek"
+    ? "\n\nNota: DeepSeek esta conectado para texto, pero esta ruta de imagen necesita OpenAI, Gemini, Claude u Ollama con vision."
+    : failures.length > 0 ? `\n\nNota: intente analizar la imagen con IA externa, pero fallo: ${failures[0]}` : "";
   return {
     provider: "local",
-    content: localVisionReply(input.prompt, input.mimeType)
+    content: `${localVisionReply(input.prompt, input.mimeType)}${note}`
   };
 }
 
@@ -93,6 +96,17 @@ function resolveProviderOrder(provider: ProviderName): ProviderName[] {
 
   if (provider === "auto") return configured;
   if (provider === "local") return [];
+  return [provider, ...configured.filter((item) => item !== provider)];
+}
+
+function resolveVisionProviderOrder(provider: ProviderName): ProviderName[] {
+  const configured: ProviderName[] = [];
+  if (hasUsableKey(env.openaiApiKey)) configured.push("openai");
+  if (hasUsableKey(env.anthropicApiKey)) configured.push("claude");
+  if (hasUsableKey(env.geminiApiKey)) configured.push("gemini");
+  if (env.ollamaBaseUrl) configured.push("ollama");
+
+  if (provider === "auto" || provider === "deepseek" || provider === "local") return configured;
   return [provider, ...configured.filter((item) => item !== provider)];
 }
 

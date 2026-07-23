@@ -1192,9 +1192,50 @@ button {
 }
 
 .composer {
+  flex-wrap: wrap;
   border-top: 1px solid var(--border);
   padding: 12px;
   background: var(--surface);
+}
+
+.chat-attachment-preview,
+.voice-status {
+  flex: 0 0 100%;
+}
+
+.chat-attachment-preview {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 7px;
+  background: var(--surface-2);
+}
+
+.chat-attachment-preview img {
+  width: 42px;
+  height: 42px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.chat-attachment-preview span,
+.voice-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.chat-attachment-preview button {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
 }
 
 input,
@@ -1221,6 +1262,7 @@ textarea:focus {
 }
 
 .composer button,
+.composer-file-button,
 .inline-form button,
 .task-form button,
 .list-item button,
@@ -1234,6 +1276,14 @@ textarea:focus {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: white;
   transition: transform 160ms ease, filter 160ms ease;
+}
+
+.composer-file-button {
+  cursor: pointer;
+}
+
+.composer-file-button input {
+  display: none;
 }
 
 .composer button.listening {

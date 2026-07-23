@@ -37,10 +37,10 @@ export const api = {
     integrations: Record<string, { configured: boolean; label: string; env?: string; fallback?: string; next?: boolean }>;
   }>("/api/bootstrap"),
 
-  chat: (message: string, provider: ProviderName, conversationId?: string) =>
+  chat: (message: string, provider: ProviderName, conversationId?: string, imageData?: string) =>
     request<{ conversation: { id: string; title: string }; messages: Message[] }>("/api/chat", {
       method: "POST",
-      body: JSON.stringify({ message, provider, conversationId })
+      body: JSON.stringify({ message, provider, conversationId, imageData })
     }),
 
   deleteConversation: (id: string) => request<void>(`/api/conversations/${id}`, { method: "DELETE" }),

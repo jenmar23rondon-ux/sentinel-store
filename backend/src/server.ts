@@ -89,6 +89,7 @@ app.post("/api/chat", async (req, res, next) => {
     const body = z.object({
       message: z.string().min(1),
       conversationId: z.string().optional(),
+      imageData: z.string().min(20).optional(),
       provider: z.enum(["auto", "openai", "claude", "gemini", "deepseek", "ollama", "local"]).default("auto")
     }).parse(req.body);
 
@@ -120,15 +121,16 @@ app.post("/api/chat", async (req, res, next) => {
       .slice(0, 8)
       .map((item) => `- [${item.priority}] ${item.title}${item.dueAt ? ` vence ${item.dueAt}` : ""}`)
       .join("\n");
-    const webContext = await maybeBuildWebContext(body.message);
-
-    const reply = await generateAssistantReply({
-      provider: body.provider as ProviderName,
-      messages: recentMessages,
-      memoryContext,
-      taskContext,
-      webContext
-    });
+    const webContext = body.imageData ? "" : await maybeBuildWebContext(body.message);
+    const reply = body.imageData
+      ? await analyzeAndStoreImageFromChat(body.message, body.imageData, body.provider as ProviderName)
+      : await generateAssistantReply({
+          provider: body.provider as ProviderName,
+          messages: recentMessages,
+          memoryContext,
+          taskContext,
+          webContext
+        });
 
     const actionNote = plannedAction
       ? `\n\nAccion preparada: ${plannedAction.title}. Queda pendiente de aprobacion en Action Center antes de ejecutarla.`
@@ -334,6 +336,35 @@ app.delete("/api/vision/:id", async (req, res) => {
   await db.deleteVision(req.params.id);
   res.status(204).send();
 });
+
+async function analyzeAndStoreImageFromChat(prompt: string, imageData: string, provider: ProviderName) {
+  const parsed = parseDataUrl(imageData);
+  const extension = parsed.mimeType === "image/png" ? "png" : parsed.mimeType === "image/webp" ? "webp" : "jpg";
+  const imageDir = path.resolve("data/images");
+  await fs.mkdir(imageDir, { recursive: true });
+  const fileName = `${nanoid()}.${extension}`;
+  const imagePath = path.join(imageDir, fileName);
+  await fs.writeFile(imagePath, Buffer.from(parsed.base64, "base64"));
+
+  const analysisPrompt = prompt.trim() || "Describe esta imagen y dime que esta pasando.";
+  const analysis = await analyzeImage({
+    provider,
+    prompt: analysisPrompt,
+    imageBase64: parsed.base64,
+    mimeType: parsed.mimeType
+  });
+
+  await db.addVision({
+    prompt: analysisPrompt,
+    analysis: analysis.content,
+    provider: analysis.provider,
+    imagePath,
+    imageMimeType: parsed.mimeType,
+    tags: ["chat", "vision"]
+  });
+
+  return analysis;
+}
 
 app.get("/api/actions", async (_req, res) => {
   res.json((await db.snapshot()).actions);

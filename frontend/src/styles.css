@@ -144,7 +144,6 @@ button {
   overflow: hidden;
 }
 
-.sidebar.compact .brand div:last-child,
 .sidebar.compact .nav-list span,
 .sidebar.compact .nav-tools span,
 .sidebar.compact .conversation-panel,
@@ -152,6 +151,10 @@ button {
 .sidebar.compact .integrations-panel,
 .sidebar.compact .provider-panel,
 .sidebar.compact .nav-settings {
+  display: none;
+}
+
+.sidebar.compact .brand > :not(.brand-mark) {
   display: none;
 }
 

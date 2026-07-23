@@ -157,6 +157,41 @@ app.delete("/api/conversations/:id", async (req, res) => {
   res.status(204).send();
 });
 
+app.post("/api/audio/transcribe", async (req, res, next) => {
+  try {
+    if (!hasUsableKey(env.openaiApiKey)) {
+      return res.status(400).json({
+        error: "Voice recording fallback needs OPENAI_API_KEY in Railway. Browser dictation can still work when microphone permission is allowed."
+      });
+    }
+
+    const body = z.object({
+      audioData: z.string().min(40),
+      mimeType: z.string().optional(),
+      language: z.enum(["es", "en", "pt", "fr"]).default("es")
+    }).parse(req.body);
+    const audio = parseAudioDataUrl(body.audioData, body.mimeType);
+    const form = new FormData();
+    const blob = new Blob([new Uint8Array(audio.buffer)], { type: audio.mimeType });
+    form.append("file", blob, `aether-voice.${audio.extension}`);
+    form.append("model", "whisper-1");
+    form.append("language", body.language);
+
+    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.openaiApiKey}`
+      },
+      body: form
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const data = await response.json() as { text?: string };
+    res.json({ provider: "openai-whisper-1", text: data.text ?? "" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/memory", async (_req, res) => {
   res.json((await db.snapshot()).memory);
 });
@@ -775,6 +810,26 @@ function parseDataUrl(dataUrl: string) {
   return {
     mimeType: match[1] === "image/jpg" ? "image/jpeg" : match[1],
     base64: match[2]
+  };
+}
+
+function parseAudioDataUrl(dataUrl: string, fallbackMimeType?: string) {
+  const match = dataUrl.match(/^data:(audio\/[a-z0-9.+-]+)(?:;codecs=[^;]+)?;base64,(.+)$/i);
+  if (!match) throw new Error("Formato de audio no soportado.");
+  const mimeType = fallbackMimeType?.split(";")[0] || match[1].toLowerCase();
+  const extension = mimeType.includes("webm")
+    ? "webm"
+    : mimeType.includes("ogg")
+      ? "ogg"
+      : mimeType.includes("mpeg")
+        ? "mp3"
+        : mimeType.includes("mp4")
+          ? "mp4"
+          : "wav";
+  return {
+    mimeType,
+    extension,
+    buffer: Buffer.from(match[2], "base64")
   };
 }
 

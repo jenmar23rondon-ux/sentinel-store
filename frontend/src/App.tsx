@@ -1,4 +1,4 @@
-import { type CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   ArrowDown,
@@ -73,8 +73,9 @@ type SpeechRecognitionLike = {
   interimResults: boolean;
   continuous: boolean;
   onresult: ((event: { results: ArrayLike<{ 0?: { transcript?: string } }> }) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string; message?: string }) => void) | null;
   onend: (() => void) | null;
+  stop: () => void;
   start: () => void;
 };
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
@@ -735,7 +736,12 @@ export function App() {
   const [voiceReplyPending, setVoiceReplyPending] = useState(false);
   const [lastSpokenMessageId, setLastSpokenMessageId] = useState("");
   const [voiceStatus, setVoiceStatus] = useState("");
+  const [audioRecording, setAudioRecording] = useState(false);
   const [error, setError] = useState("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioSendAfterRef = useRef(false);
 
   const t = translations[language];
 
@@ -1035,7 +1041,12 @@ export function App() {
     setAuthUser(null);
   }
 
-  function startVoiceInput(sendAfterCapture = false) {
+  async function startVoiceInput(sendAfterCapture = false) {
+    if (audioRecording) {
+      stopAudioRecording();
+      return;
+    }
+
     const SpeechRecognition = (window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
       webkitSpeechRecognition?: SpeechRecognitionCtor;
@@ -1044,7 +1055,12 @@ export function App() {
     }).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setError("Voice input is not supported in this browser. Try Chrome on Android or desktop.");
+      await startAudioRecording(sendAfterCapture);
+      return;
+    }
+
+    if (!window.isSecureContext && location.hostname !== "localhost") {
+      setError("Microphone needs HTTPS. Open the deployed Railway/Vercel URL or localhost.");
       return;
     }
 
@@ -1055,6 +1071,7 @@ export function App() {
     recognition.interimResults = true;
     recognition.continuous = false;
     let finalText = "";
+    let recognitionFailed = false;
     setVoiceListening(true);
 
     recognition.onresult = (event) => {
@@ -1067,12 +1084,23 @@ export function App() {
         setChatInput(text);
       }
     };
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
+      recognitionFailed = true;
       setVoiceListening(false);
       setVoiceStatus("");
-      setError("I could not capture your voice. Check microphone permission.");
+      const reason = event.error ?? "";
+      if (/not-allowed|service-not-allowed|permission/i.test(reason)) {
+        setError("Microphone permission is blocked. Enable microphone access for this site in Chrome/Android settings.");
+        return;
+      }
+      if (/audio-capture/i.test(reason)) {
+        setError("I cannot find an available microphone. Check that no other app is using it.");
+        return;
+      }
+      void startAudioRecording(sendAfterCapture);
     };
     recognition.onend = () => {
+      if (recognitionFailed) return;
       setVoiceListening(false);
       setVoiceStatus(finalText.trim() ? "Voice captured" : "");
       if (sendAfterCapture && finalText.trim()) {
@@ -1086,6 +1114,90 @@ export function App() {
       setVoiceListening(false);
       setVoiceStatus("");
       setError("I could not start the microphone. Close other recording apps and try again.");
+    }
+  }
+
+  async function startAudioRecording(sendAfterCapture = false) {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("This browser cannot record microphone audio. Try Chrome on Android or desktop.");
+      return;
+    }
+    if (!window.isSecureContext && location.hostname !== "localhost") {
+      setError("Microphone needs HTTPS. Open the deployed app URL or localhost.");
+      return;
+    }
+
+    try {
+      setError("");
+      setVoiceStatus("Recording... tap the mic again to finish.");
+      audioSendAfterRef.current = sendAfterCapture;
+      audioChunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "";
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        void transcribeRecordedAudio(recorder.mimeType || "audio/webm");
+      };
+      recorder.start();
+      setAudioRecording(true);
+      setVoiceListening(false);
+    } catch (err) {
+      setAudioRecording(false);
+      setVoiceStatus("");
+      const detail = err instanceof Error ? err.message : "";
+      setError(/permission|denied|notallowed/i.test(detail)
+        ? "Microphone permission is blocked. Enable microphone access for this site in Chrome/Android settings."
+        : "I could not open the microphone. Check browser permissions and try again.");
+    }
+  }
+
+  function stopAudioRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    setVoiceStatus("Transcribing audio...");
+    recorder.stop();
+  }
+
+  async function transcribeRecordedAudio(mimeType: string) {
+    setAudioRecording(false);
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+
+    const blob = new Blob(audioChunksRef.current, { type: mimeType || "audio/webm" });
+    audioChunksRef.current = [];
+    if (blob.size < 800) {
+      setVoiceStatus("");
+      setError("I did not capture enough audio. Tap the mic, speak clearly, then tap again.");
+      return;
+    }
+
+    try {
+      const audioData = await blobToDataUrl(blob);
+      const result = await api.transcribeAudio(audioData, mimeType || blob.type || "audio/webm", language);
+      const text = result.text.trim();
+      setVoiceStatus(text ? "Voice transcribed" : "");
+      if (!text) {
+        setError("I could not understand the audio. Try speaking closer to the microphone.");
+        return;
+      }
+      setChatInput(text);
+      if (audioSendAfterRef.current) {
+        setVoiceReplyPending(true);
+        await submitChat(text);
+      }
+    } catch (err) {
+      setVoiceStatus("");
+      setError(err instanceof Error ? err.message : "I could not transcribe the audio.");
     }
   }
 
@@ -1975,7 +2087,7 @@ export function App() {
                 <ImagePlus size={18} />
                 <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => handleChatImageFile(event.target.files?.[0])} />
               </label>
-              <button type="button" className={voiceListening ? "listening" : ""} onClick={() => startVoiceInput(voiceConversation)} title="Voice input">
+              <button type="button" className={voiceListening || audioRecording ? "listening" : ""} onClick={() => startVoiceInput(voiceConversation)} title="Voice input">
                 {voiceListening ? <Loader2 className="spin" size={18} /> : <Mic size={18} />}
               </button>
               <button type="submit" disabled={busy} title={t.send}>
@@ -2660,6 +2772,15 @@ function speakText(content: string, language: Language) {
   utterance.rate = 1;
   utterance.pitch = 1;
   window.speechSynthesis.speak(utterance);
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read recorded audio."));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function MessageActions({

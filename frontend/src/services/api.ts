@@ -43,6 +43,12 @@ export const api = {
       body: JSON.stringify({ message, provider, conversationId, imageData })
     }),
 
+  transcribeAudio: (audioData: string, mimeType: string, language: string) =>
+    request<{ text: string; provider: string }>("/api/audio/transcribe", {
+      method: "POST",
+      body: JSON.stringify({ audioData, mimeType, language })
+    }),
+
   deleteConversation: (id: string) => request<void>(`/api/conversations/${id}`, { method: "DELETE" }),
 
   requestLoginCode: (email: string) =>
